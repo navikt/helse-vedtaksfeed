@@ -1,7 +1,7 @@
-# helse-sputnik
+# helse-vedtaksfeed
 
 ## Beskrivelse
-Sputnik aggregerer og persisterer informasjon fra eksterne systemer for å løse behov fra spleis.
+Vedtaksfeed formidler sykepengevedtak til Infotrygd.
 
 ## Kjøretidsavhengigheter
 

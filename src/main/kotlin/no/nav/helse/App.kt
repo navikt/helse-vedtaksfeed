@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -35,7 +35,7 @@ val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
-val log = LoggerFactory.getLogger("sputnik")
+val log = LoggerFactory.getLogger("vedtaksfeed")
 
 fun main() = runBlocking {
     val serviceUser = readServiceUserCredentials()
@@ -64,16 +64,7 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        val stsRestClient = StsRestClient(environment.stsBaseUrl, basicAuthHttpClient(serviceUser))
-        val fpsakRestClient = FpsakRestClient(
-            baseUrl = environment.fpsakBaseUrl,
-            httpClient = simpleHttpClient(),
-            stsRestClient = stsRestClient
-        )
-
-        val løsningService = LøsningService(fpsakRestClient)
-
-        launchListeners(environment, serviceUser, løsningService)
+//        launchListeners(environment, serviceUser)
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -82,43 +73,12 @@ fun launchApplication(
     }
 }
 
-private fun basicAuthHttpClient(
-    serviceUser: ServiceUser,
-    serializer: JacksonSerializer? = JacksonSerializer()
-) = HttpClient() {
-    install(Auth) {
-        basic {
-            username = serviceUser.username
-            password = serviceUser.password
-        }
-    }
-    install(JsonFeature) {
-        this.serializer = serializer
-    }
-}
-
-private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer()) = HttpClient() {
-    install(JsonFeature) {
-        this.serializer = serializer
-    }
-}
-
-
 fun CoroutineScope.launchListeners(
     environment: Environment,
     serviceUser: ServiceUser,
-    løsningService: LøsningService,
     baseConfig: Properties = loadBaseConfig(environment, serviceUser)
 ): Job {
-    val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
-
-    return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
-        val behov = it.value()
-        val behovId = behov["@id"]
-        if (behov["@behov"].asText() == "Ytelsesbehov" && !behov.hasNonNull("@løsning")) {
-            val løsning = løsningService.løsBehov(behov)
-            behovProducer.send(ProducerRecord(environment.spleisBehovtopic, it.key(), løsning))
-                .also { log.info("løser behov: $behovId") }
-        }
+    return listen<String, JsonNode>(environment.vedtakstopic, baseConfig.toConsumerConfig()) {
+        log.info("Fikk melding med key=${it.key()}")
     }
 }
