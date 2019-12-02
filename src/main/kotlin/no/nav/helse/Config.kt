@@ -14,11 +14,14 @@ fun readServiceUserCredentials() = ServiceUser(
 
 fun setUpEnvironment() =
     Environment(
-        kafkaBootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS")
-            ?: error("Mangler env var KAFKA_BOOTSTRAP_SERVERS")
+        kafkaBootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS"),
+        jwksUrl = System.getenv("JWKS_URL"),
+        jwtIssuer = System.getenv("JWT_ISSUER")
     )
 
 data class Environment(
+    val jwksUrl: String,
+    val jwtIssuer: String,
     val kafkaBootstrapServers: String,
     val vedtakstopic: String = "privat-helse-sykepenger-vedtak"
 )
