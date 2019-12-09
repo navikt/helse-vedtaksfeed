@@ -1,9 +1,5 @@
 package no.nav.helse
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -14,23 +10,17 @@ import java.time.Duration
 import java.util.Properties
 
 
-fun <K, V> CoroutineScope.listen(
+fun <K, V> listen(
     topic: String,
     consumerConfig: Properties,
     delayMs: Long = 100,
     onMessage: (ConsumerRecord<K, V>) -> Unit
-) = launch {
+) {
     val consumer = KafkaConsumer<K, V>(consumerConfig).also {
         it.subscribe(listOf(topic))
     }
-    while (isActive) {
-        val records = consumer.poll(Duration.ofMillis(0))
-        if (records.isEmpty) {
-            delay(delayMs)
-        }
-
-        records.forEach { onMessage(it) }
-    }
+    val records = consumer.poll(Duration.ofMillis(delayMs))
+    records.forEach { onMessage(it) }
 }
 
 fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Properties().also {

@@ -19,17 +19,9 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import java.net.URL
 import java.util.Properties
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
@@ -38,75 +30,54 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .registerModule(JavaTimeModule())
 val log = LoggerFactory.getLogger("vedtaksfeed")
 
-fun main() = runBlocking {
+fun main() {
     val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
 
-    launchApplication(environment, serviceUser)
-}
-
-fun launchApplication(
-    environment: Environment,
-    serviceUser: ServiceUser
-) {
-    val applicationContext = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
-    val exceptionHandler = CoroutineExceptionHandler { context, e ->
-        log.error("Feil i lytter", e)
-        context.cancel(CancellationException("Feil i lytter", e))
-    }
     val jwkProvider = JwkProviderBuilder(URL(environment.jwksUrl))
         .cached(10, 24, TimeUnit.HOURS)
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
     val authenticatedUsers = listOf("srvinfotrygd") // TODO: Finn servicebruker
+    val server = embeddedServer(Netty, 8080) {
+        install(MicrometerMetrics) {
+            registry = meterRegistry
+        }
 
-    runBlocking(exceptionHandler + applicationContext) {
-        val server = embeddedServer(Netty, 8080) {
-            install(MicrometerMetrics) {
-                registry = meterRegistry
-            }
-
-            install(Authentication) {
-                jwt {
-                    verifier(jwkProvider, environment.jwtIssuer)
-                    realm = "Vedtaksfeed"
-                    validate { credentials ->
-                        if (credentials.payload.subject in authenticatedUsers) {
-                            JWTPrincipal(credentials.payload)
-                        } else {
-                            log.info("${credentials.payload.subject} is not authorized to use this app, denying access")
-                            null
-                        }
+        install(Authentication) {
+            jwt {
+                verifier(jwkProvider, environment.jwtIssuer)
+                realm = "Vedtaksfeed"
+                validate { credentials ->
+                    if (credentials.payload.subject in authenticatedUsers) {
+                        JWTPrincipal(credentials.payload)
+                    } else {
+                        log.info("${credentials.payload.subject} is not authorized to use this app, denying access")
+                        null
                     }
                 }
             }
+        }
 
-            routing {
-                registerHealthApi({ true }, { true }, meterRegistry)
-                authenticate {
-                    get("/test") {
+        routing {
+            registerHealthApi({ true }, { true }, meterRegistry)
+            authenticate {
+                get("/test") {
 
-                    }
                 }
             }
-        }.start(wait = false)
-
-        launchListeners(environment, serviceUser)
-
-        Runtime.getRuntime().addShutdownHook(Thread {
-            server.stop(10, 10, TimeUnit.SECONDS)
-            applicationContext.close()
-        })
-    }
+        }
+    }.start(wait = false)
+    launchListeners(environment, serviceUser)
+    Runtime.getRuntime().addShutdownHook(Thread {
+        server.stop(10, 10, TimeUnit.SECONDS)
+    })
 }
 
-fun CoroutineScope.launchListeners(
+fun launchListeners(
     environment: Environment,
     serviceUser: ServiceUser,
     baseConfig: Properties = loadBaseConfig(environment, serviceUser)
-): Job {
-    return listen<String, JsonNode>(environment.vedtakstopic, baseConfig.toConsumerConfig()) {
-        log.info("Fikk melding med key=${it.key()}")
-
-    }
+) = listen<String, JsonNode>(environment.vedtakstopic, baseConfig.toConsumerConfig()) {
+    log.info("Fikk melding med key=${it.key()}")
 }

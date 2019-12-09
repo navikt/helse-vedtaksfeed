@@ -2,7 +2,6 @@ package no.nav.helse
 
 import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.CommonClientConfigs
@@ -49,7 +48,6 @@ internal class AppTest : CoroutineScope {
         this[SaslConfigs.SASL_MECHANISM] = "PLAIN"
     }
 
-    private lateinit var job: Job
 
     private val behovProducer = KafkaProducer<String, JsonNode>(testKafkaProperties.toProducerConfig())
     private val behovConsumer = KafkaConsumer<String, JsonNode>(testKafkaProperties.toConsumerConfig().also {
@@ -61,7 +59,7 @@ internal class AppTest : CoroutineScope {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = launchListeners(environment, serviceUser, testKafkaProperties)
+        launchListeners(environment, serviceUser, testKafkaProperties)
     }
 
     fun ventPåLøsning(maxDelaySeconds: Long) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
@@ -74,7 +72,6 @@ internal class AppTest : CoroutineScope {
 
     @AfterAll
     fun tearDown() {
-        job.cancel()
         embeddedKafkaEnvironment.close()
     }
 }
