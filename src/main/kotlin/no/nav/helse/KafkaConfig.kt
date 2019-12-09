@@ -36,7 +36,7 @@ fun <K, V> CoroutineScope.listen(
 fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Properties().also {
     it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
     it["sasl.jaas.config"] = "org.apache.kafka.common.security.plain.PlainLoginModule required " +
-            "username=\"${serviceUser.username}\" password=\"${serviceUser.password}\";"
+        "username=\"${serviceUser.username}\" password=\"${serviceUser.password}\";"
     it["bootstrap.servers"] = env.kafkaBootstrapServers
 }
 

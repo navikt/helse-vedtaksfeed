@@ -18,12 +18,14 @@ import java.nio.file.Paths
 import java.text.ParseException
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
 const val keyId = "localhost-signer"
 
-/* Brukes for til å hente ut pubkeyen som brukes til å validere tokens. Denne er noe som tilbyder av tokens (AzureAd)
-   normalt tilbyr.
+/**
+ * Brukes for til å hente ut pubkeyen som brukes til å validere tokens. Denne er noe som tilbyder av tokens (AzureAd)
+ * normalt tilbyr.
  */
 fun fakeJWTApi(randomPort: Int): NettyApplicationEngine {
     return embeddedServer(Netty, randomPort) {
@@ -35,7 +37,8 @@ fun fakeJWTApi(randomPort: Int): NettyApplicationEngine {
     }.start(wait = false)
 }
 
-/* Utsteder en Bearer-token (En slik vi ber AzureAd om). OBS: Det er viktig at KeyId matcher kid i jwkset.json
+/**
+ *  Utsteder en Bearer-token (En slik vi ber AzureAd om). OBS: Det er viktig at KeyId matcher kid i jwkset.json
  */
 fun genereateJWT(
     consumerClientId: String? = "consumerClientId",
