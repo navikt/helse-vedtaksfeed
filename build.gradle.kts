@@ -1,10 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.5.2"
-val ktorVersion = "1.2.5"
+val ktorVersion = "1.2.6"
 
 plugins {
-    kotlin("jvm") version "1.3.50"
+    kotlin("jvm") version "1.3.61"
 }
 
 group = "no.nav.helse"
@@ -12,6 +12,7 @@ group = "no.nav.helse"
 repositories {
     mavenCentral()
     maven("http://packages.confluent.io/maven/")
+    maven("https://dl.bintray.com/kotlin/kotlinx/")
 }
 
 dependencies {
@@ -41,6 +42,7 @@ dependencies {
     testImplementation("no.nav:kafka-embedded-env:2.2.3")
     testImplementation("org.awaitility:awaitility:4.0.1")
 
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
     testImplementation("io.mockk:mockk:1.9.3")
     testImplementation ("com.nimbusds:nimbus-jose-jwt:7.5.1")

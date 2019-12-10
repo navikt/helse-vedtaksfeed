@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.databind.JsonNode
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.time.LocalDate
 import java.util.Properties
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -37,10 +37,10 @@ internal class VedtakskonsumentTest {
         jwtIssuer = "http://jwtissuer.url"
     )
 
-    private val testVedtakskonsumentBuilder = VedtakskonsumentBuilder<String, JsonNode>(environment)
+    private val testVedtakskonsumentBuilder = VedtakskonsumentBuilder(environment)
 
-    internal class JacksonKafkaSerializer : Serializer<JsonNode> {
-        override fun serialize(topic: String?, data: JsonNode?): ByteArray = objectMapper.writeValueAsBytes(data)
+    internal class JacksonKafkaSerializer : Serializer<Vedtak> {
+        override fun serialize(topic: String?, data: Vedtak?): ByteArray = objectMapper.writeValueAsBytes(data)
     }
 
     private val testKafkaProperties = Properties().also {
@@ -52,7 +52,7 @@ internal class VedtakskonsumentTest {
         it[SaslConfigs.SASL_MECHANISM] = "PLAIN"
     }
 
-    private val testProducer = KafkaProducer<String, JsonNode>(testKafkaProperties)
+    private val testProducer = KafkaProducer<String, Vedtak>(testKafkaProperties)
 
     private lateinit var vedtakskonsument: Vedtakskonsument
 
@@ -69,18 +69,18 @@ internal class VedtakskonsumentTest {
 
     @Test
     internal fun `skal returnere tom liste hvis det ikke finnes noen vedtak`() {
-        assertEquals(emptyList<Any>(), vedtakskonsument.hentVedtak(100, 1))
+        assertEquals(emptyList<Vedtak>(), vedtakskonsument.hentVedtak(100, 1))
     }
 
     @Test
     internal fun `skal returnere liste med ett vedtak når det finnes ett vedtak`() {
-        testProducer.send(ProducerRecord(testTopic, objectMapper.valueToTree("{}")))
+        testProducer.send(ProducerRecord(testTopic, Vedtak("aktørId", "utbetalingsreferanse", emptyList(), LocalDate.now())))
         assertEquals(1, vedtakskonsument.hentVedtak(100, 100).size)
     }
 
     @Test
     internal fun `skal returnere liste med ett vedtak når det finnes ett vedtak igjen`() {
-        testProducer.send(ProducerRecord(testTopic, objectMapper.valueToTree("{}")))
+        testProducer.send(ProducerRecord(testTopic, Vedtak("aktørId", "utbetalingsreferanse", emptyList(), LocalDate.now())))
         assertEquals(1, vedtakskonsument.hentVedtak(100, 100).size)
     }
 }

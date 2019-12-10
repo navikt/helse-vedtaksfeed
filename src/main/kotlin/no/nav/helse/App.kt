@@ -11,7 +11,6 @@ import io.ktor.auth.authenticate
 import io.ktor.auth.jwt.JWTPrincipal
 import io.ktor.auth.jwt.jwt
 import io.ktor.metrics.micrometer.MicrometerMetrics
-import io.ktor.routing.get
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
@@ -57,12 +56,12 @@ fun main() {
             }
         }
 
+        val konsument = Vedtakskonsument(VedtakskonsumentBuilder(environment, serviceUser))
+
         routing {
             registerHealthApi({ true }, { true }, meterRegistry)
             authenticate {
-                get("/feed") {
-                    val maxAntall = this.context.parameters["maxAntall"]?.toInt() ?: 100
-                }
+                feedApi(konsument)
             }
         }
     }.start(wait = false)

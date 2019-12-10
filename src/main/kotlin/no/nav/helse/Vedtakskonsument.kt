@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.databind.JsonNode
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -10,8 +9,8 @@ import java.time.Duration
 import java.util.Properties
 
 
-internal class Vedtakskonsument(private val kafkakonsumentBuilder: VedtakskonsumentBuilder<String, JsonNode>) {
-    fun hentVedtak(antall: Int, poll: Int): List<JsonNode> =
+internal class Vedtakskonsument(private val kafkakonsumentBuilder: VedtakskonsumentBuilder) {
+    fun hentVedtak(antall: Int, poll: Int): List<Vedtak> =
         kafkakonsumentBuilder.maxPollRecords(antall).build().use { kafkaConsumer ->
             repeat(poll) {
                 kafkaConsumer.poll(Duration.ofMillis(100))
@@ -23,7 +22,7 @@ internal class Vedtakskonsument(private val kafkakonsumentBuilder: Vedtakskonsum
         }
 }
 
-internal class VedtakskonsumentBuilder<K, V> {
+internal class VedtakskonsumentBuilder {
     private val env: Environment
     private val properties: Properties
 
@@ -34,7 +33,7 @@ internal class VedtakskonsumentBuilder<K, V> {
             it["bootstrap.servers"] = env.kafkaBootstrapServers
             it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-consumer"
             it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-            it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = JacksonKafkaDeserializer::class.java
+            it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
             it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "100"
             it[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "PLAINTEXT"
             it[SaslConfigs.SASL_MECHANISM] = "PLAIN"
@@ -51,11 +50,10 @@ internal class VedtakskonsumentBuilder<K, V> {
         this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "$maxPollRecords"
     }
 
-    internal fun maxPollRecords(antall: Int): VedtakskonsumentBuilder<K, V> {
+    internal fun maxPollRecords(antall: Int): VedtakskonsumentBuilder {
         this.properties.setMaxPollRecords(antall)
         return this
     }
 
-    internal fun build(): KafkaConsumer<K, V> =
-        KafkaConsumer<K, V>(properties).also { it.subscribe(listOf(env.vedtakstopic)) }
+    internal fun build() = KafkaConsumer<String, Vedtak>(properties).also { it.subscribe(listOf(env.vedtakstopic)) }
 }

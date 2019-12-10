@@ -1,8 +1,8 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.apache.kafka.common.serialization.Deserializer
 
-class JacksonKafkaDeserializer : Deserializer<JsonNode> {
-    override fun deserialize(topic: String?, data: ByteArray): JsonNode = objectMapper.readTree(data)
+class VedtakDeserializer : Deserializer<Vedtak> {
+    override fun deserialize(topic: String?, data: ByteArray) = objectMapper.readValue<Vedtak>(data)
 }
