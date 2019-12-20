@@ -6,20 +6,27 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.serialization.StringDeserializer
 import java.time.Duration
-import java.util.Properties
+import java.util.*
 
 
-internal class Vedtakskonsument(private val kafkakonsumentBuilder: VedtakskonsumentBuilder) {
-    fun hentVedtak(antall: Int, poll: Int): List<Vedtak> =
-        kafkakonsumentBuilder.maxPollRecords(antall).build().use { kafkaConsumer ->
-            repeat(poll) {
-                kafkaConsumer.poll(Duration.ofMillis(100))
-                    .map { record -> record.value() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.apply { return this }
-            }
-            emptyList()
-        }
+internal class Vedtakskonsument(private val kafkaConsumer: KafkaConsumer<String, Vedtak>) {
+    private var sisteSekvensNr: Int = -1
+
+    fun hentVedtak(antall: Int, sekvensNr: Int): List<Vedtak> {
+        /* if seksvensnummer == vårt
+            committer forrige offset
+            poller vi 100 og returnerer dem
+            else
+            hvis vi er i nulltilstand, poll 100
+            hvis sekvens != sekvens kast bolle exception
+         */
+
+        kafkaConsumer.poll(Duration.ofMillis(100))
+            .map { record -> record.value() }
+            .takeIf { it.isNotEmpty() }
+            ?.apply { return this }
+        return emptyList()
+    }
 }
 
 internal class VedtakskonsumentBuilder {

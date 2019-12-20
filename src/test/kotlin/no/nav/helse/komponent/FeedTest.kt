@@ -22,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.serialization.StringSerializer
+import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.LocalDate
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -74,7 +76,7 @@ internal class FeedTest {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        vedtakskonsument = Vedtakskonsument(testVedtakskonsumentBuilder)
+        vedtakskonsument = Vedtakskonsument(testVedtakskonsumentBuilder.build())
     }
 
     @AfterAll
@@ -104,14 +106,15 @@ internal class FeedTest {
         withTestApplication({
             routing { feedApi(vedtakskonsument) }
         }) {
-            with(handleRequest(HttpMethod.Get, "/feed")) {
-                assertEquals(HttpStatusCode.OK, response.status())
-                assertFalse(response.content.isNullOrBlank())
+            Awaitility.await()
+                .atMost(5, TimeUnit.SECONDS)
+                .until {
+                    with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0")) {
+                        assertEquals(HttpStatusCode.OK, response.status())
+                        objectMapper.readValue<Feed>(response.content!!).elementer.isNotEmpty()
+                    }
+                }
 
-                val feed = objectMapper.readValue<Feed>(response.content!!)
-                kotlin.test.assertEquals(LocalDate.of(2019, 12, 1), feed.elementer.first().innhold.foersteStoenadsdag)
-                kotlin.test.assertEquals(LocalDate.of(2019, 12, 10), feed.elementer.first().innhold.sisteStoenadsdag)
-            }
         }
     }
 }

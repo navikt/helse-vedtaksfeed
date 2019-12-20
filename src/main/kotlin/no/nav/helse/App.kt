@@ -56,7 +56,7 @@ fun main() {
             }
         }
 
-        val konsument = Vedtakskonsument(VedtakskonsumentBuilder(environment, serviceUser))
+        val konsument = Vedtakskonsument(VedtakskonsumentBuilder(environment, serviceUser).build())
 
         routing {
             registerHealthApi({ true }, { true }, meterRegistry)

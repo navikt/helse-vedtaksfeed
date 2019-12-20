@@ -3,6 +3,8 @@ package no.nav.helse
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.parametersOf
+import io.ktor.request.header
 import io.ktor.routing.routing
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication
@@ -25,7 +27,7 @@ internal class FeedApiTest {
                 })
             }
         }) {
-            with(handleRequest(HttpMethod.Get, "/feed")) {
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0")) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 assertFalse(response.content.isNullOrBlank())
             }
@@ -49,7 +51,7 @@ internal class FeedApiTest {
             }
         }) {
             assertThrows<IllegalStateException> {
-                handleRequest(HttpMethod.Get, "/feed")
+                handleRequest(HttpMethod.Get, "/feed?sekvensNr=0")
             }
         }
     }
@@ -76,7 +78,7 @@ internal class FeedApiTest {
                 })
             }
         }) {
-            with(handleRequest(HttpMethod.Get, "/feed")) {
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0")) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 assertFalse(response.content.isNullOrBlank())
 

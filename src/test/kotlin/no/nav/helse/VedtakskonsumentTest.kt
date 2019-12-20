@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.serialization.StringSerializer
+import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.LocalDate
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class VedtakskonsumentTest {
@@ -59,7 +61,7 @@ internal class VedtakskonsumentTest {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        vedtakskonsument = Vedtakskonsument(testVedtakskonsumentBuilder)
+        vedtakskonsument = Vedtakskonsument(testVedtakskonsumentBuilder.build())
     }
 
     @AfterAll
@@ -69,18 +71,25 @@ internal class VedtakskonsumentTest {
 
     @Test
     internal fun `skal returnere tom liste hvis det ikke finnes noen vedtak`() {
-        assertEquals(emptyList<Vedtak>(), vedtakskonsument.hentVedtak(100, 1))
+        assertEquals(emptyList<Vedtak>(), vedtakskonsument.hentVedtak(100, 0))
     }
 
     @Test
     internal fun `skal returnere liste med ett vedtak når det finnes ett vedtak`() {
         testProducer.send(ProducerRecord(testTopic, Vedtak("aktørId", "utbetalingsreferanse", emptyList(), LocalDate.now())))
-        assertEquals(1, vedtakskonsument.hentVedtak(100, 100).size)
+        assertEquals(1, ventPåVedtak().size)
     }
 
-    @Test
-    internal fun `skal returnere liste med ett vedtak når det finnes ett vedtak igjen`() {
-        testProducer.send(ProducerRecord(testTopic, Vedtak("aktørId", "utbetalingsreferanse", emptyList(), LocalDate.now())))
-        assertEquals(1, vedtakskonsument.hentVedtak(100, 100).size)
+    private fun ventPåVedtak(): List<Vedtak> {
+        var vedtak: List<Vedtak>? = null
+
+        Awaitility.await()
+            .atMost(5, TimeUnit.SECONDS)
+            .until {
+                vedtak = vedtakskonsument.hentVedtak(100, 0)
+                vedtak?.size != 0
+            }
+
+        return vedtak!!
     }
 }
