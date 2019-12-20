@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 data class Feed(
     val tittel: String,
-    val inneholderFlereElementer: Boolean?,
+    val inneholderFlereElementer: Boolean,
     val elementer: List<FeedElement>
 )
 

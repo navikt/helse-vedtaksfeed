@@ -1,0 +1,27 @@
+{
+    "topics": [
+        {
+            "configEntries": {},
+            "members": [
+                {
+                    "member": "srvvedtaksfeed",
+                    "role": "PRODUCER"
+                },
+                {
+                    "member": "srvvedtaksfeed",
+                    "role": "CONSUMER"
+                },
+                {
+                    "member": "N143409",
+                    "role": "MANAGER"
+                },
+                {
+                    "member": "S151890",
+                    "role": "MANAGER"
+                }
+            ],
+            "numPartitions": 1,
+            "topicName": "privat-helse-vedtaksfeed-infotrygd"
+        }
+    ]
+}

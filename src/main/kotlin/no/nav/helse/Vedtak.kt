@@ -27,3 +27,18 @@ fun Vedtak.toFeedElement() =
         ),
         FeedElementMetadata(opprettet)
     )
+
+/*
+{
+  "tittel": "string",
+  "inneholderFlereElementer": true,
+  "elementer": [
+    {
+      "type": "string",
+      "sekvensId": 0,
+      "innhold": {},
+      "metadata": {}
+    }
+  ]
+}
+ */
