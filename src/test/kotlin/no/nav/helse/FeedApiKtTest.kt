@@ -1,31 +1,22 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import io.ktor.application.install
-import io.ktor.features.ContentNegotiation
 import io.ktor.http.HttpMethod
-import io.ktor.jackson.jackson
 import io.ktor.routing.routing
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication
 import no.nav.common.KafkaEnvironment
-import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.config.SaslConfigs
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.awaitility.Awaitility
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.time.Duration
 import java.util.*
-import java.util.concurrent.TimeUnit
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -80,6 +71,56 @@ internal class FeedApiKtTest {
             }
         }
     }
+
+    @Test
+    fun `får tilbake elementer fra feed med antall`() {
+        withTestApplication({
+            installJacksonFeature()
+            routing {
+                feedApi(testTopic, consumer)
+            }}
+        ) {
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+                val feed = objectMapper.readValue<Feed>(response.content!!)
+                assertEquals(10, feed.elementer.size)
+                assertEquals(0, feed.elementer.first().sekvensId)
+                assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
+            }
+
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=10&maxAntall=10")){
+                val feed = objectMapper.readValue<Feed>(response.content!!)
+                assertEquals(10, feed.elementer.size)
+                assertEquals(10, feed.elementer.first().sekvensId)
+                assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
+            }
+
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=2000")){
+                val feed = objectMapper.readValue<Feed>(response.content!!)
+                println(feed.toString())
+                assertTrue(feed.elementer.isEmpty())
+            }
+        }
+    }
+
+    @Test
+    fun `kan spørre flere ganger og få samme resultat`() {
+        withTestApplication({
+            installJacksonFeature()
+            routing {
+                feedApi(testTopic, consumer)
+            }}
+        ) {
+            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+                val content = response.content!!
+
+                with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+                    assertEquals(content, response.content!!)
+                }
+            }
+        }
+    }
+
+
 
 
     private fun loadTestConfig(): Properties = Properties().also {

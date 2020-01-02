@@ -1,11 +1,9 @@
 package no.nav.helse
 
 import io.ktor.response.respond
-import io.ktor.response.respondBytes
 import io.ktor.routing.Route
 import io.ktor.routing.get
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import java.time.Duration
@@ -51,40 +49,3 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             )
         )
     }
-
-/*
-{
-  "tittel": "ForeldrepengerVedtak_v1",
-  "inneholderFlereElementer": false,
-  "elementer": [
-    {
-      "type": "ForeldrepengerInnvilget_v1",
-      "sekvensId": 11839,
-      "innhold": {
-        "aktoerId": "1000065039586",
-        "foersteStoenadsdag": "2019-04-10",
-        "sisteStoenadsdag": "2020-01-06",
-        "gsakId": "138504202"
-      },
-      "metadata": {
-        "opprettetDato": "2019-03-18T09:14:09.474+01:00"
-      }
-    }
-  ]
-}
- */
-
-/*
-{
-  "tittel": "string",
-  "inneholderFlereElementer": true,
-  "elementer": [
-    {
-      "type": "string",
-      "sekvensId": 0,
-      "innhold": {},
-      "metadata": {}
-    }
-  ]
-}
- */

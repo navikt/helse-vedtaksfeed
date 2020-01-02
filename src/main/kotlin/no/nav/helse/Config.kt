@@ -8,14 +8,12 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Duration
 import java.util.*
-import kotlin.reflect.KClass
 
 const val vaultBase = "/var/run/secrets/nais.io/vault"
 val vaultBasePath: Path = Paths.get(vaultBase)
@@ -62,6 +60,7 @@ fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Pro
 fun Properties.toConsumerConfig(): Properties = Properties().also {
     it.putAll(this)
     it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-consumer"
+    it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
     it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
@@ -69,7 +68,8 @@ fun Properties.toConsumerConfig(): Properties = Properties().also {
 
 fun Properties.toSeekingConsumer() = Properties().also {
     it.putAll(this)
-    it.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
+    it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+    it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
     it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
