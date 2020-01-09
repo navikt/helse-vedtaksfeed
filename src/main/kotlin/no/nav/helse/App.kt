@@ -87,7 +87,10 @@ fun main() = runBlocking {
         .subscribe(listOf(environment.vedtakstopic))
 
     vedtakconsumer.asFlow()
-        .collect { (key, value) -> vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value)) }
+        .collect { (key, value) ->
+            vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value))
+                .also { log.info("Republiserer vedtak med key:$key på intern topic") }
+        }
 
     Runtime.getRuntime().addShutdownHook(Thread {
         server.stop(10, 10, TimeUnit.SECONDS)
