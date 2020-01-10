@@ -20,6 +20,7 @@ import io.ktor.server.netty.Netty
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -28,6 +29,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
@@ -37,7 +39,7 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
 @FlowPreview
-fun main() = runBlocking {
+fun main() = runBlocking(Executors.newFixedThreadPool(4).asCoroutineDispatcher()) {
     val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
 
