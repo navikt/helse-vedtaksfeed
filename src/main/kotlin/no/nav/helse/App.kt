@@ -45,7 +45,7 @@ fun main() = runBlocking {
         .cached(10, 24, TimeUnit.HOURS)
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
-    val authenticatedUsers = listOf("srvinfotrygd") // TODO: Finn servicebruker
+    val authenticatedUsers = listOf("srvvedtaksfeed") // TODO: Finn servicebruker infotrygd skal bruke
     val server = embeddedServer(Netty, 8080) {
         installJacksonFeature()
         install(MicrometerMetrics) {
