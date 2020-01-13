@@ -1,6 +1,7 @@
 package no.nav.helse
 
 import com.auth0.jwk.JwkProviderBuilder
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit
 
 val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val objectMapper: ObjectMapper = jacksonObjectMapper()
+    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")

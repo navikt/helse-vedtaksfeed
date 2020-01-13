@@ -4,6 +4,7 @@ import java.time.LocalDate
 
 data class Vedtak(
     val aktørId: String,
+    val fødselsnummer: String,
     val utbetalingsreferanse: String,
     val utbetalingslinjer: List<Utbetalingslinje>,
     val opprettet: LocalDate

@@ -96,7 +96,6 @@ internal class FeedApiKtTest {
 
             with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=2000")){
                 val feed = objectMapper.readValue<Feed>(response.content!!)
-                println(feed.toString())
                 assertTrue(feed.elementer.isEmpty())
             }
         }
@@ -136,7 +135,8 @@ fun vedtak(id: Int) = """
         "aktørId": "aktørId",
         "utbetalingsreferanse": "$id",
         "utbetalingslinjer": [{ "fom": "2018-01-01", "tom": "2018-01-10", "dagsats": 1000 }],
-        "opprettet": "2018-01-01"
+        "opprettet": "2018-01-01",
+        "fødselsnummer": "fnr"
     }
 """
 
