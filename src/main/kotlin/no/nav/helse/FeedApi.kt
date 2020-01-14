@@ -40,7 +40,7 @@ fun List<FeedElement>.toFeed(maksAntall: Int) = Feed(
 fun ConsumerRecord<String, Vedtak>.toFeedElement() =
     this.value().let { vedtak ->
         FeedElement(
-            type = "SykepengerUtbetalt_v1",
+            type = Vedtakstype.SykepengerUtbetalt_v1.name,
             sekvensId = this.offset(),
             metadata = FeedElementMetadata(opprettetDato = vedtak.opprettet),
             innhold = FeedElementInnhold(
@@ -51,3 +51,7 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             )
         )
     }
+
+enum class Vedtakstype {
+    SykepengerUtbetalt_v1, SykepengerAnnullert_v1
+}
