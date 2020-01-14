@@ -20,7 +20,7 @@ data class FeedElementInnhold(
     val foersteStoenadsdag: LocalDate,
     val sisteStoenadsdag: LocalDate,
     val gsakId: String?,
-    val forbrukteStoenadsdager: Int = 0
+    val forbrukteStoenadsdager: Int = 999
 )
 
 data class FeedElementMetadata(
