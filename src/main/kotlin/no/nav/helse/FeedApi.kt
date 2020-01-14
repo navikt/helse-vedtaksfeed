@@ -14,19 +14,20 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
 
     get("/feed") {
         val maksAntall = this.context.parameters["maxAntall"]?.toInt() ?: 100
-        val sekvensNr = this.context.parameters["sekvensNr"]?.toLong()
+        val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
 
-        consumer.seek(topicPartition, sekvensNr)
+        consumer.seek(topicPartition, sisteLest)
         val records = consumer.poll(Duration.ofMillis(1000))
         val feed = records
+            .drop(if(sisteLest == 0L) 0 else 1)
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
 
         context.respond(feed)
-            .also { log.info("Retunerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sekvensNr") }
+            .also { log.info("Retunerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest") }
     }
 }
 
