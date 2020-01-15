@@ -65,7 +65,7 @@ internal class FeedApiKtTest {
                 feedApi(testTopic, consumer)
             }}
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")){
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(feed.elementer.isNotEmpty())
             }
@@ -80,23 +80,30 @@ internal class FeedApiKtTest {
                 feedApi(testTopic, consumer)
             }}
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
 
-            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=10&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=9&maxAntall=10")){
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(10, feed.elementer.first().sekvensId)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
 
-            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=2000")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=2000")){
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(feed.elementer.isEmpty())
+            }
+
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=980&maxAntall=50")){
+                val feed = objectMapper.readValue<Feed>(response.content!!)
+                assertEquals(19, feed.elementer.size)
+                assertEquals(981, feed.elementer.first().sekvensId)
+                assertEquals(18, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
         }
     }
@@ -109,10 +116,10 @@ internal class FeedApiKtTest {
                 feedApi(testTopic, consumer)
             }}
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
                 val content = response.content!!
 
-                with(handleRequest(HttpMethod.Get, "/feed?sekvensNr=0&maxAntall=10")){
+                with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
                     assertEquals(content, response.content!!)
                 }
             }

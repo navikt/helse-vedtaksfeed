@@ -10,10 +10,10 @@ spec:
   port: 8080
   liveness:
     path: /is_alive
-    initialDelay: 5
+    initialDelay: 20
   readiness:
     path: /is_ready
-    initialDelay: 5
+    initialDelay: 20
   resources:
     limits:
       cpu: 200m
@@ -23,7 +23,7 @@ spec:
       memory: 128Mi
   replicas:
     min: 1
-    max: 3
+    max: 2
     cpuThresholdPercentage: 90
   prometheus:
     enabled: true
