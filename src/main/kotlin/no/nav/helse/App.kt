@@ -23,6 +23,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -88,9 +89,12 @@ fun main() = runBlocking(Executors.newFixedThreadPool(4).asCoroutineDispatcher()
         KafkaProducer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toProducerConfig())
 
     vedtakconsumer
-        .subscribe(listOf(environment.vedtakstopic))
+        .subscribe(listOf(environment.rapidTopic))
 
     vedtakconsumer.asFlow()
+        .filter { (_, value) ->
+            objectMapper.readTree(value)["@event_name"]?.asText() == "utbetaling"
+        }
         .collect { (key, value) ->
             vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value))
                 .also { log.info("Republiserer vedtak med key:$key på intern topic") }

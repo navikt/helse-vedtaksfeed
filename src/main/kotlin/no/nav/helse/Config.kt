@@ -34,7 +34,7 @@ data class Environment(
     val jwksUrl: String,
     val jwtIssuer: String,
     val kafkaBootstrapServers: String,
-    val vedtakstopic: String = "privat-helse-sykepenger-utbetaling",
+    val rapidTopic: String = "privat-helse-sykepenger-rapid-v1",
     val vedtaksfeedtopic: String = "privat-helse-vedtaksfeed-infotrygd"
 )
 

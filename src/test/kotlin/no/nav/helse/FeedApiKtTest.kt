@@ -139,6 +139,7 @@ internal class FeedApiKtTest {
 
 fun vedtak(id: Int) = """
     {
+        "@event_name": "utbetaling",
         "aktørId": "aktørId",
         "utbetalingsreferanse": "$id",
         "utbetalingslinjer": [{ "fom": "2018-01-01", "tom": "2018-01-10", "dagsats": 1000 }],
