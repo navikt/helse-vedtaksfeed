@@ -1,6 +1,7 @@
 package no.nav.helse
 
 import com.auth0.jwk.JwkProviderBuilder
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -93,7 +94,11 @@ fun main() = runBlocking(Executors.newFixedThreadPool(4).asCoroutineDispatcher()
 
     vedtakconsumer.asFlow()
         .filter { (_, value) ->
-            objectMapper.readTree(value)["@event_name"]?.asText() == "utbetaling"
+            try {
+                objectMapper.readTree(value)["@event_name"]?.asText() == "utbetaling"
+            } catch (err: JsonProcessingException) {
+                false
+            }
         }
         .collect { (key, value) ->
             vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value))
