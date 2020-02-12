@@ -34,7 +34,7 @@ data class Environment(
     val jwksUrl: String,
     val jwtIssuer: String,
     val kafkaBootstrapServers: String,
-    val rapidTopic: String = "privat-helse-sykepenger-rapid-v1",
+    val rapidTopic: String = "helse-rapid-v1",
     val vedtaksfeedtopic: String = "privat-helse-vedtaksfeed-infotrygd"
 )
 
@@ -59,7 +59,7 @@ fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Pro
 
 fun Properties.toConsumerConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-consumer"
+    it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-v1"
     it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
@@ -77,7 +77,7 @@ fun Properties.toSeekingConsumer() = Properties().also {
 
 fun Properties.toProducerConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-producer"
+    it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-v1"
     it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
     it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
 }
