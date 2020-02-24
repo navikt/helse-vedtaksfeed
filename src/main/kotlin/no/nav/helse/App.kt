@@ -95,7 +95,7 @@ fun main() = runBlocking(Executors.newFixedThreadPool(4).asCoroutineDispatcher()
     vedtakconsumer.asFlow()
         .filter { (_, value) ->
             try {
-                objectMapper.readTree(value)["@event_name"]?.asText() == "utbetaling"
+                objectMapper.readTree(value)["@event_name"]?.asText() == "utbetalt"
             } catch (err: JsonProcessingException) {
                 false
             }
