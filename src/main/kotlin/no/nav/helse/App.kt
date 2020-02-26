@@ -101,7 +101,7 @@ fun main() = runBlocking(Executors.newFixedThreadPool(4).asCoroutineDispatcher()
             }
         }
         .collect { (key, value) ->
-            vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value))
+            vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, key, value)).get()
                 .also { log.info("Republiserer vedtak med key:$key på intern topic") }
         }
 
