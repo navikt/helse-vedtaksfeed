@@ -17,7 +17,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
-
+        consumer.poll(Duration.ofMillis(1000))
         consumer.seek(topicPartition, sisteLest)
         val records = consumer.poll(Duration.ofMillis(1000))
         val feed = records
