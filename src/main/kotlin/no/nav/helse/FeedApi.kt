@@ -47,7 +47,8 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
                 aktoerId = vedtak.aktørId,
                 foersteStoenadsdag = vedtak.utbetalingslinjer.first().fom,
                 sisteStoenadsdag = vedtak.utbetalingslinjer.last().tom,
-                utbetalingsreferanse = vedtak.utbetalingsreferanse
+                utbetalingsreferanse = vedtak.utbetalingsreferanse,
+                forbrukteStoenadsdager = vedtak.forbrukteSykedager
             )
         )
     }

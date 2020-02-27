@@ -84,6 +84,7 @@ internal class FeedApiKtTest {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
+                assertEquals(123, feed.elementer.first().innhold.forbrukteStoenadsdager)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
 
@@ -144,7 +145,8 @@ fun vedtak(id: Int) = """
         "utbetalingsreferanse": "$id",
         "utbetalingslinjer": [{ "fom": "2018-01-01", "tom": "2018-01-10", "dagsats": 1000 }],
         "opprettet": "2018-01-01",
-        "fødselsnummer": "fnr"
+        "fødselsnummer": "fnr",
+        "forbrukteSykedager": 123
     }
 """
 
