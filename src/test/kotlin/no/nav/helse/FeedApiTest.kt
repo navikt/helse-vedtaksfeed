@@ -16,11 +16,11 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.*
+import java.util.Properties
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class FeedApiKtTest {
+internal class FeedApiTest {
 
     private val testTopic = "yes"
     private val topicInfos = listOf(
@@ -138,7 +138,7 @@ internal class FeedApiKtTest {
     }
 }
 
-fun vedtak(id: Int) = """
+private fun vedtak(id: Int) = """
     {
         "@event_name": "utbetalt",
         "aktørId": "aktørId",

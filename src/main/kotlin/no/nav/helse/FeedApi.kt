@@ -4,6 +4,7 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.get
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import java.time.Duration
@@ -18,10 +19,12 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
         consumer.poll(Duration.ofMillis(1000))
-        consumer.seek(topicPartition, sisteLest)
+        val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
+        consumer.seek(topicPartition, seekTil)
         val records = consumer.poll(Duration.ofMillis(1000))
-        val feed = records
-            .drop(if(sisteLest == 0L) 0 else 1)
+        val feed = (records
+            .takeUnless { records.count() == 1 && sisteLest == 0L && records.first().offset() == 0L }
+            ?: ConsumerRecords.empty())
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
