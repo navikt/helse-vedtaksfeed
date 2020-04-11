@@ -3,11 +3,15 @@ package no.nav.helse
 import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.get
+import org.apache.commons.codec.binary.Base32
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
+import java.nio.ByteBuffer
 import java.time.Duration
+import java.time.LocalDate
+import java.util.*
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -48,13 +52,29 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             metadata = FeedElementMetadata(opprettetDato = vedtak.opprettet),
             innhold = FeedElementInnhold(
                 aktoerId = vedtak.aktørId,
-                foersteStoenadsdag = vedtak.utbetalingslinjer.first().fom,
-                sisteStoenadsdag = vedtak.utbetalingslinjer.last().tom,
-                utbetalingsreferanse = vedtak.utbetalingsreferanse,
+                foersteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.fom }.min()
+                    .requireNotNull(),
+                sisteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.tom }.max()
+                    .requireNotNull(),
+                utbetalingsreferanse = vedtak.gruppeId.base32Encode(),
                 forbrukteStoenadsdager = vedtak.forbrukteSykedager
             )
         )
     }
+
+private fun LocalDate?.requireNotNull() = requireNotNull(this) { "Ingen utbetalinger i vedtak" }
+
+private fun UUID.base32Encode(): String {
+    val pad = '='
+    return Base32(pad.toByte())
+        .encodeAsString(this.byteArray())
+        .replace(pad.toString(), "")
+}
+
+private fun UUID.byteArray() = ByteBuffer.allocate(Long.SIZE_BYTES * 2).apply {
+    putLong(this@byteArray.mostSignificantBits)
+    putLong(this@byteArray.leastSignificantBits)
+}.array()
 
 enum class Vedtakstype {
     SykepengerUtbetalt_v1, SykepengerAnnullert_v1

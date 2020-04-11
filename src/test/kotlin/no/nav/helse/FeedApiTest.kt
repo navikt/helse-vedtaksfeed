@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.Properties
+import java.util.*
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -46,7 +46,7 @@ internal class FeedApiTest {
 
         KafkaProducer<String, String>(testKafkaProperties).use { testproducer ->
             repeat(1000) {
-                testproducer.send(ProducerRecord(testTopic, it.toString(), vedtak(it)))
+                testproducer.send(ProducerRecord(testTopic, it.toString(), vedtak(UUID.randomUUID())))
             }
         }
         consumer = KafkaConsumer(loadTestConfig().toSeekingConsumer())
@@ -127,9 +127,6 @@ internal class FeedApiTest {
         }
     }
 
-
-
-
     private fun loadTestConfig(): Properties = Properties().also {
         it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
         it.remove("security.protocol")
@@ -138,16 +135,28 @@ internal class FeedApiTest {
     }
 }
 
-private fun vedtak(id: Int) = """
+private fun vedtak(id: UUID) = """
     {
-        "@event_name": "utbetalt",
-        "aktørId": "aktørId",
-        "utbetalingsreferanse": "$id",
-        "utbetalingslinjer": [{ "fom": "2018-01-01", "tom": "2018-01-10", "dagsats": 1000 }],
-        "opprettet": "2018-01-01",
-        "fødselsnummer": "fnr",
-        "forbrukteSykedager": 123
+      "@event_name": "utbetalt",
+      "aktørId": "aktørId",
+      "fødselsnummer": "fnr",
+      "gruppeId": "$id",
+      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
+      "utbetaling": [
+        {
+          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
+          "utbetalingslinjer": [
+            {
+              "fom": "2018-01-01",
+              "tom": "2018-01-10",
+              "dagsats": 1000,
+              "grad": 100.0
+            }
+          ]
+        }
+      ],
+      "forbrukteSykedager": 123,
+      "opprettet": "2018-01-01",
+      "system_read_count": 0
     }
 """
-
-
