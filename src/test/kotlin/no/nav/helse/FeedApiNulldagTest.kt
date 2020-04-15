@@ -14,6 +14,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
+import java.time.LocalDate
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -56,15 +57,15 @@ internal class FeedApiNulldagTest {
                 assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic er tom")
             }
 
-            val gruppeId1 = UUID.randomUUID()
-            kafkaProducer.send(ProducerRecord(testTopic, "0", vedtak(gruppeId1)))
+            val (fom1, tom1) = LocalDate.of(2020, 3, 1) to LocalDate.of(2020, 3, 15)
+            kafkaProducer.send(ProducerRecord(testTopic, "0", vedtak(fom1, tom1)))
             with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic bare har ett element")
             }
 
-            val gruppeId2 = UUID.randomUUID()
-            kafkaProducer.send(ProducerRecord(testTopic, "1", vedtak(gruppeId2)))
+            val (fom2, tom2) = LocalDate.of(2020, 4, 1) to LocalDate.of(2020, 4, 15)
+            kafkaProducer.send(ProducerRecord(testTopic, "1", vedtak(fom2, tom2)))
             with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(
@@ -72,8 +73,8 @@ internal class FeedApiNulldagTest {
                     "Feed skal ha elementer når det er mer enn ett element på topic"
                 )
                 assertEquals(2, feed.elementer.size)
-                assertEquals(gruppeId1, feed.elementer[0].innhold.utbetalingsreferanse.decodeGruppeId())
-                assertEquals(gruppeId2, feed.elementer[1].innhold.utbetalingsreferanse.decodeGruppeId())
+                assertEquals(fom1, feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(fom2, feed.elementer[1].innhold.utbetalingsreferanse)
             }
         }
         embeddedKafkaEnvironment.close()
@@ -87,23 +88,20 @@ internal class FeedApiNulldagTest {
     }
 }
 
-private fun String.decodeGruppeId() = ByteBuffer.wrap(Base32('='.toByte()).decode(this.toByteArray()))
-    .let { UUID(it.getLong(0), it.getLong(8)) }
-
-private fun vedtak(id: UUID) = """
+private fun vedtak(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
       "aktørId": "aktørId",
       "fødselsnummer": "fnr",
-      "gruppeId": "$id",
+      "førsteFraværsdag": "$fom",
       "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
       "utbetaling": [
         {
           "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
           "utbetalingslinjer": [
             {
-              "fom": "2018-01-01",
-              "tom": "2018-01-10",
+              "fom": "$fom",
+              "tom": "$tom",
               "dagsats": 1000,
               "grad": 100.0
             }
@@ -114,4 +112,4 @@ private fun vedtak(id: UUID) = """
       "opprettet": "2018-01-01",
       "system_read_count": 0
     }
-    """
+"""

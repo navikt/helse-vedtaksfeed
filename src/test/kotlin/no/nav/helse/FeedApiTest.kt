@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.time.LocalDate
 import java.util.*
 import kotlin.test.assertTrue
 
@@ -46,7 +47,13 @@ internal class FeedApiTest {
 
         KafkaProducer<String, String>(testKafkaProperties).use { testproducer ->
             repeat(1000) {
-                testproducer.send(ProducerRecord(testTopic, it.toString(), vedtak(UUID.randomUUID())))
+                testproducer.send(
+                    ProducerRecord(
+                        testTopic,
+                        it.toString(),
+                        vedtak(LocalDate.of(2018, 1, 1).plusDays(it.toLong()), LocalDate.of(2018, 1, 1).plusDays(it.toLong()))
+                    )
+                )
             }
         }
         consumer = KafkaConsumer(loadTestConfig().toSeekingConsumer())
@@ -63,9 +70,10 @@ internal class FeedApiTest {
             installJacksonFeature()
             routing {
                 feedApi(testTopic, consumer)
-            }}
+            }
+        }
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(feed.elementer.isNotEmpty())
             }
@@ -78,9 +86,10 @@ internal class FeedApiTest {
             installJacksonFeature()
             routing {
                 feedApi(testTopic, consumer)
-            }}
+            }
+        }
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
@@ -88,19 +97,19 @@ internal class FeedApiTest {
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
 
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=9&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=9&maxAntall=10")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(10, feed.elementer.first().sekvensId)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
 
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=2000")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=2000")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertTrue(feed.elementer.isEmpty())
             }
 
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=980&maxAntall=50")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=980&maxAntall=50")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
                 assertEquals(19, feed.elementer.size)
                 assertEquals(981, feed.elementer.first().sekvensId)
@@ -115,12 +124,13 @@ internal class FeedApiTest {
             installJacksonFeature()
             routing {
                 feedApi(testTopic, consumer)
-            }}
+            }
+        }
         ) {
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")) {
                 val content = response.content!!
 
-                with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")){
+                with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")) {
                     assertEquals(content, response.content!!)
                 }
             }
@@ -135,20 +145,20 @@ internal class FeedApiTest {
     }
 }
 
-private fun vedtak(id: UUID) = """
+private fun vedtak(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
       "aktørId": "aktørId",
       "fødselsnummer": "fnr",
-      "gruppeId": "$id",
+      "førsteFraværsdag": "$fom",
       "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
       "utbetaling": [
         {
           "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
           "utbetalingslinjer": [
             {
-              "fom": "2018-01-01",
-              "tom": "2018-01-10",
+              "fom": "$fom",
+              "tom": "$tom",
               "dagsats": 1000,
               "grad": 100.0
             }

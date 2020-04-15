@@ -19,7 +19,7 @@ data class FeedElementInnhold(
     val aktoerId: String,
     val foersteStoenadsdag: LocalDate,
     val sisteStoenadsdag: LocalDate,
-    val utbetalingsreferanse: String,
+    val utbetalingsreferanse: LocalDate,
     val forbrukteStoenadsdager: Int
 )
 

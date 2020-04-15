@@ -56,25 +56,13 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
                     .requireNotNull(),
                 sisteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.tom }.max()
                     .requireNotNull(),
-                utbetalingsreferanse = vedtak.gruppeId.base32Encode(),
+                utbetalingsreferanse = vedtak.førsteFraværsdag,
                 forbrukteStoenadsdager = vedtak.forbrukteSykedager
             )
         )
     }
 
 private fun LocalDate?.requireNotNull() = requireNotNull(this) { "Ingen utbetalinger i vedtak" }
-
-private fun UUID.base32Encode(): String {
-    val pad = '='
-    return Base32(pad.toByte())
-        .encodeAsString(this.byteArray())
-        .replace(pad.toString(), "")
-}
-
-private fun UUID.byteArray() = ByteBuffer.allocate(Long.SIZE_BYTES * 2).apply {
-    putLong(this@byteArray.mostSignificantBits)
-    putLong(this@byteArray.leastSignificantBits)
-}.array()
 
 enum class Vedtakstype {
     SykepengerUtbetalt_v1, SykepengerAnnullert_v1
