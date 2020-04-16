@@ -3,15 +3,12 @@ package no.nav.helse
 import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.get
-import org.apache.commons.codec.binary.Base32
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
-import java.nio.ByteBuffer
 import java.time.Duration
 import java.time.LocalDate
-import java.util.*
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -52,7 +49,10 @@ fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             metadata = FeedElementMetadata(opprettetDato = vedtak.opprettet),
             innhold = FeedElementInnhold(
                 aktoerId = vedtak.aktørId,
-                foersteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.fom }.min()
+                foersteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }
+                    .map { it.fom }
+                    .filter { it >= vedtak.førsteFraværsdag }
+                    .min()
                     .requireNotNull(),
                 sisteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.tom }.max()
                     .requireNotNull(),

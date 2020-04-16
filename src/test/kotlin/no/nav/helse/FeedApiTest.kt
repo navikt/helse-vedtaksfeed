@@ -55,6 +55,13 @@ internal class FeedApiTest {
                     )
                 )
             }
+            testproducer.send(
+                ProducerRecord(
+                    testTopic,
+                    "1000",
+                    vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
+                )
+            )
         }
         consumer = KafkaConsumer(loadTestConfig().toSeekingConsumer())
     }
@@ -111,9 +118,9 @@ internal class FeedApiTest {
 
             with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=980&maxAntall=50")) {
                 val feed = objectMapper.readValue<Feed>(response.content!!)
-                assertEquals(19, feed.elementer.size)
+                assertEquals(20, feed.elementer.size)
                 assertEquals(981, feed.elementer.first().sekvensId)
-                assertEquals(18, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
+                assertEquals(19, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
             }
         }
     }
@@ -133,6 +140,21 @@ internal class FeedApiTest {
                 with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0&maxAntall=10")) {
                     assertEquals(content, response.content!!)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `setter foersteStoenadsdag til første fom lik eller etter førsteFraværsdag`() {
+        withTestApplication({
+            installJacksonFeature()
+            routing {
+                feedApi(testTopic, consumer)
+            }
+        }) {
+            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=999&maxAntall=1")) {
+                val feed = objectMapper.readValue<Feed>(response.content!!)
+                assertEquals(LocalDate.of(2019, 1, 1), feed.elementer.first().innhold.foersteStoenadsdag)
             }
         }
     }
@@ -157,6 +179,37 @@ private fun vedtak(fom: LocalDate, tom: LocalDate) = """
           "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
           "utbetalingslinjer": [
             {
+              "fom": "$fom",
+              "tom": "$tom",
+              "dagsats": 1000,
+              "grad": 100.0
+            }
+          ]
+        }
+      ],
+      "forbrukteSykedager": 123,
+      "opprettet": "2018-01-01",
+      "system_read_count": 0
+    }
+"""
+
+private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
+    {
+      "@event_name": "utbetalt",
+      "aktørId": "aktørId",
+      "fødselsnummer": "fnr",
+      "førsteFraværsdag": "$fom",
+      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
+      "utbetaling": [
+        {
+          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
+          "utbetalingslinjer": [
+            {
+              "fom": "${fom.minusMonths(1)}",
+              "tom": "${tom.minusMonths(1)}",
+              "dagsats": 1000,
+              "grad": 100.0
+            }, {
               "fom": "$fom",
               "tom": "$tom",
               "dagsats": 1000,
