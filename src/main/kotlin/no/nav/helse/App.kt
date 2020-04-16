@@ -15,10 +15,7 @@ import io.ktor.auth.jwt.JWTPrincipal
 import io.ktor.auth.jwt.jwt
 import io.ktor.features.ContentNegotiation
 import io.ktor.jackson.jackson
-import io.ktor.metrics.micrometer.MicrometerMetrics
 import io.ktor.routing.routing
-import io.micrometer.prometheus.PrometheusConfig
-import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -28,7 +25,6 @@ import java.net.URL
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
@@ -65,9 +61,6 @@ internal fun Application.vedtaksfeed(
     val authenticatedUsers = listOf("srvvedtaksfeed", "srvInfot")
 
     installJacksonFeature()
-    install(MicrometerMetrics) {
-        registry = meterRegistry
-    }
 
     install(Authentication) {
         jwt {
@@ -88,7 +81,6 @@ internal fun Application.vedtaksfeed(
         KafkaConsumer<String, Vedtak>(vedtaksfeedConsumerProps.toSeekingConsumer())
 
     routing {
-        registerHealthApi({ true }, { true }, meterRegistry)
         authenticate {
             feedApi(environment.vedtaksfeedtopic, vedtaksfeedconsumer)
         }
