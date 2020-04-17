@@ -35,32 +35,52 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
     }
 }
 
-fun List<FeedElement>.toFeed(maksAntall: Int) = Feed(
+private fun List<FeedElement>.toFeed(maksAntall: Int) = Feed(
     tittel = "SykepengerVedtaksperioder",
     inneholderFlereElementer = maksAntall == size,
     elementer = this
 )
 
-fun ConsumerRecord<String, Vedtak>.toFeedElement() =
+private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
     this.value().let { vedtak ->
+        val førsteStønadsdag: LocalDate
+        val sisteStønadsdag: LocalDate
+        when (vedtak) {
+            is Vedtak.VedtakV1 -> {
+                førsteStønadsdag = førsteStønadsdag(
+                    vedtak.utbetaling.flatMap { it.utbetalingslinjer },
+                    vedtak.førsteFraværsdag
+                )
+                sisteStønadsdag = sisteStønadsdag(vedtak.utbetaling.flatMap { it.utbetalingslinjer })
+            }
+
+            is Vedtak.VedtakV2 -> {
+                førsteStønadsdag = førsteStønadsdag(
+                    vedtak.utbetalingslinjer,
+                    vedtak.førsteFraværsdag
+                )
+                sisteStønadsdag = sisteStønadsdag(vedtak.utbetalingslinjer)
+            }
+        }
+
         FeedElement(
             type = Vedtakstype.SykepengerUtbetalt_v1.name,
             sekvensId = this.offset(),
             metadata = FeedElementMetadata(opprettetDato = vedtak.opprettet),
             innhold = FeedElementInnhold(
                 aktoerId = vedtak.aktørId,
-                foersteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }
-                    .map { it.fom }
-                    .filter { it >= vedtak.førsteFraværsdag }
-                    .min()
-                    .requireNotNull(),
-                sisteStoenadsdag = vedtak.utbetaling.flatMap { it.utbetalingslinjer }.map { it.tom }.max()
-                    .requireNotNull(),
+                foersteStoenadsdag = førsteStønadsdag,
+                sisteStoenadsdag = sisteStønadsdag,
                 utbetalingsreferanse = vedtak.førsteFraværsdag,
                 forbrukteStoenadsdager = vedtak.forbrukteSykedager
             )
         )
     }
+
+private fun sisteStønadsdag(list: List<Utbetalingslinje>) = list.map { it.tom }.max().requireNotNull()
+
+private fun førsteStønadsdag(list: List<Utbetalingslinje>, førsteFraværsdag: LocalDate): LocalDate =
+    list.map { it.fom }.filter { it >= førsteFraværsdag }.min().requireNotNull()
 
 private fun LocalDate?.requireNotNull() = requireNotNull(this) { "Ingen utbetalinger i vedtak" }
 

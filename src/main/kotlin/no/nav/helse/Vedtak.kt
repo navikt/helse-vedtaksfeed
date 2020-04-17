@@ -2,14 +2,29 @@ package no.nav.helse
 
 import java.time.LocalDate
 
-data class Vedtak(
+sealed class Vedtak(
     val aktørId: String,
     val fødselsnummer: String,
     val førsteFraværsdag: LocalDate,
-    val utbetaling: List<Utbetalingslinjer>,
     val opprettet: LocalDate,
     val forbrukteSykedager: Int = 999 // Avtalt defaultverdi med IT-gjengen for vedtak fra før vi fikk på plass verdien
-)
+) {
+    class VedtakV1(
+        aktørId: String,
+        fødselsnummer: String,
+        førsteFraværsdag: LocalDate,
+        opprettet: LocalDate,
+        val utbetaling: List<Utbetalingslinjer>
+    ): Vedtak(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
+
+    class VedtakV2(
+        aktørId: String,
+        fødselsnummer: String,
+        førsteFraværsdag: LocalDate,
+        opprettet: LocalDate,
+        val utbetalingslinjer: List<Utbetalingslinje>
+    ): Vedtak(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
+}
 
 data class Utbetalingslinjer(
     val utbetalingsreferanse: String,

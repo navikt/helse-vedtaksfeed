@@ -8,18 +8,13 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.routing.routing
-import io.ktor.server.testing.handleRequest
-import io.ktor.server.testing.withTestApplication
 import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.InMemoryRapid
 import no.nav.helse.rapids_rivers.inMemoryRapid
-import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
-import org.awaitility.Awaitility
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -37,7 +32,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class FeedApiTest {
+internal class EndToEndTest {
 
     private lateinit var appBaseUrl: String
     private lateinit var rapid: InMemoryRapid
@@ -55,8 +50,6 @@ internal class FeedApiTest {
         withSchemaRegistry = false,
         withSecurity = false
     )
-
-    lateinit var consumer: KafkaConsumer<String, Vedtak>
 
     @BeforeAll
     fun setup() {
@@ -103,28 +96,26 @@ internal class FeedApiTest {
         }
         rapid.start()
 
-        KafkaProducer<String, String>(testKafkaProperties).use { testproducer ->
+        KafkaProducer<String, String>(testKafkaProperties).use { internProducer ->
             repeat(1000) {
-                testproducer.send(
+                internProducer.send(
                     ProducerRecord(
                         testTopic,
-                        it.toString(),
-                        vedtak(
+                        vedtakMedUtbetalingslinjernøkkel(
                             LocalDate.of(2018, 1, 1).plusDays(it.toLong()),
                             LocalDate.of(2018, 1, 1).plusDays(it.toLong())
                         )
                     )
                 )
             }
-            testproducer.send(
-                ProducerRecord(
-                    testTopic,
-                    "1000",
-                    vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
-                )
+            internProducer.send(
+                ProducerRecord(testTopic, vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31)))
             )
+            internProducer.send(
+                ProducerRecord(testTopic, vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31)))
+            )
+
         }
-        consumer = KafkaConsumer(loadTestConfig().toSeekingConsumer())
     }
 
     @AfterAll
@@ -167,11 +158,9 @@ internal class FeedApiTest {
             assertTrue(feed.elementer.isEmpty())
         }
 
-        "/feed?sistLesteSekvensId=980&maxAntall=50".httpGet {
+        "/feed?sistLesteSekvensId=981&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
             assertEquals(20, feed.elementer.size)
-            assertEquals(981, feed.elementer.first().sekvensId)
-            assertEquals(19, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
         }
     }
 
@@ -180,6 +169,8 @@ internal class FeedApiTest {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
             val url = "/feed?sistLesteSekvensId=0&maxAntall=10"
             url.httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertTrue(feed.elementer.isNotEmpty())
                 val content = this
 
                 url.httpGet {
@@ -195,6 +186,17 @@ internal class FeedApiTest {
             "/feed?sistLesteSekvensId=999&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(LocalDate.of(2019, 1, 1), feed.elementer.first().innhold.foersteStoenadsdag)
+            }
+        }
+    }
+
+    @Test
+    fun `takler alle meldingsformater`() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=999&maxAntall=1000".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals(LocalDate.of(2019, 3, 1), feed.elementer.last().innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 3, 31), feed.elementer.last().innhold.sisteStoenadsdag)
             }
         }
     }
@@ -254,7 +256,7 @@ internal class FeedApiTest {
 
 }
 
-private fun vedtak(fom: LocalDate, tom: LocalDate) = """
+private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
       "aktørId": "aktørId",
@@ -303,6 +305,27 @@ private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
               "grad": 100.0
             }
           ]
+        }
+      ],
+      "forbrukteSykedager": 123,
+      "opprettet": "2018-01-01",
+      "system_read_count": 0
+    }
+"""
+
+private fun vedtakMedUtbetalingslinjernøkkel(fom: LocalDate, tom: LocalDate) = """
+    {
+      "@event_name": "utbetalt",
+      "aktørId": "aktørId",
+      "fødselsnummer": "fnr",
+      "førsteFraværsdag": "$fom",
+      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
+      "utbetalingslinjer": [
+        {
+          "fom": "$fom",
+          "tom": "$tom",
+          "dagsats": 1000,
+          "grad": 100.0
         }
       ],
       "forbrukteSykedager": 123,
