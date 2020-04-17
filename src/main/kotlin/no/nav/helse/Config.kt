@@ -28,7 +28,6 @@ data class Environment(
     val jwksUrl: String,
     val jwtIssuer: String,
     val kafkaBootstrapServers: String,
-    val rapidTopic: String = "helse-rapid-v1",
     val vedtaksfeedtopic: String = "privat-helse-vedtaksfeed-infotrygd"
 )
 
@@ -55,7 +54,6 @@ fun Properties.toSeekingConsumer() = Properties().also {
 
 fun Properties.toProducerConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "vedtaksfeed-v1"
     it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
     it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
 }

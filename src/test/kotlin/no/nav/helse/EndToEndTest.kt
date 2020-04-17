@@ -9,12 +9,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import no.nav.common.KafkaEnvironment
-import no.nav.helse.rapids_rivers.InMemoryRapid
 import no.nav.helse.rapids_rivers.inMemoryRapid
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -35,14 +31,11 @@ import kotlin.test.assertTrue
 internal class EndToEndTest {
 
     private lateinit var appBaseUrl: String
-    private lateinit var rapid: InMemoryRapid
     private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
     private lateinit var jwtStub: JwtStub
 
-    private val testTopic = "privat-helse-vedtaksfeed-infotrygd"
-    private val topicInfos = listOf(
-        KafkaEnvironment.TopicInfo(testTopic, partitions = 1)
-    )
+    private val internTopic = "privat-helse-vedtaksfeed-infotrygd"
+    private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
     private val embeddedKafkaEnvironment = KafkaEnvironment(
         autoStart = false,
         noOfBrokers = 1,
@@ -54,11 +47,6 @@ internal class EndToEndTest {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        val testKafkaProperties = loadTestConfig().also {
-            it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-            it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-        }
-
         wireMockServer.start()
         await("vent på WireMockServer har startet")
             .atMost(5, TimeUnit.SECONDS)
@@ -77,7 +65,7 @@ internal class EndToEndTest {
         val randomPort = ServerSocket(0).use { it.localPort }
         appBaseUrl = "http://localhost:$randomPort"
 
-        rapid = inMemoryRapid {
+        val rapid = inMemoryRapid {
             ktor {
                 port(randomPort)
                 module {
@@ -89,33 +77,31 @@ internal class EndToEndTest {
                     vedtaksfeed(
                         testEnv,
                         JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
-                        loadTestConfig()
+                        loadTestConfig().toProducerConfig()
                     )
                 }
             }
+        }.apply {
+            start()
+            val internVedtakProducer = KafkaProducer<String, String>(loadTestConfig().toProducerConfig())
+            UtbetaltRiverV1(this, internVedtakProducer, internTopic)
+            UtbetaltRiverV2(this, internVedtakProducer, internTopic)
         }
-        rapid.start()
 
-        KafkaProducer<String, String>(testKafkaProperties).use { internProducer ->
-            repeat(1000) {
-                internProducer.send(
-                    ProducerRecord(
-                        testTopic,
-                        vedtakMedUtbetalingslinjernøkkel(
-                            LocalDate.of(2018, 1, 1).plusDays(it.toLong()),
-                            LocalDate.of(2018, 1, 1).plusDays(it.toLong())
-                        )
-                    )
+        repeat(100) {
+            rapid.sendToListeners(
+                vedtakMedUtbetalingslinjernøkkel(
+                    LocalDate.of(2018, 1, 1).plusDays(it.toLong()),
+                    LocalDate.of(2018, 1, 1).plusDays(it.toLong())
                 )
-            }
-            internProducer.send(
-                ProducerRecord(testTopic, vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31)))
             )
-            internProducer.send(
-                ProducerRecord(testTopic, vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31)))
-            )
-
         }
+        rapid.sendToListeners(
+            vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
+        )
+        rapid.sendToListeners(
+            vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31))
+        )
     }
 
     @AfterAll
@@ -150,15 +136,14 @@ internal class EndToEndTest {
             assertEquals(10, feed.elementer.size)
             assertEquals(10, feed.elementer.first().sekvensId)
             assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
-
         }
 
-        "/feed?sistLesteSekvensId=2000".httpGet {
+        "/feed?sistLesteSekvensId=200".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
             assertTrue(feed.elementer.isEmpty())
         }
 
-        "/feed?sistLesteSekvensId=981&maxAntall=50".httpGet {
+        "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
             assertEquals(20, feed.elementer.size)
         }
@@ -183,7 +168,7 @@ internal class EndToEndTest {
     @Test
     fun `setter foersteStoenadsdag til første fom lik eller etter førsteFraværsdag`() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=999&maxAntall=1".httpGet {
+            "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(LocalDate.of(2019, 1, 1), feed.elementer.first().innhold.foersteStoenadsdag)
             }
@@ -193,7 +178,7 @@ internal class EndToEndTest {
     @Test
     fun `takler alle meldingsformater`() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=999&maxAntall=1000".httpGet {
+            "/feed?sistLesteSekvensId=99&maxAntall=1000".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(LocalDate.of(2019, 3, 1), feed.elementer.last().innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2019, 3, 31), feed.elementer.last().innhold.sisteStoenadsdag)

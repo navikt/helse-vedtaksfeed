@@ -31,7 +31,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             .toFeed(maksAntall)
 
         context.respond(feed)
-            .also { log.info("Retunerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest") }
+            .also { log.info("Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest") }
     }
 }
 
