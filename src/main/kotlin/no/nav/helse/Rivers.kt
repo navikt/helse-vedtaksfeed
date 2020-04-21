@@ -3,7 +3,10 @@ package no.nav.helse
 import no.nav.helse.rapids_rivers.*
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
+
+private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
 
 class UtbetaltRiverV1(
     rapidsConnection: RapidsConnection,
@@ -26,20 +29,25 @@ class UtbetaltRiverV1(
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
-        Vedtak(
-            type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
-            opprettet = packet["opprettet"].asLocalDateTime(),
-            aktørId = packet["aktørId"].textValue(),
-            fødselsnummer = packet["fødselsnummer"].textValue(),
-            førsteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
-                .map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull(),
-            sisteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
-                .map { it["tom"].asLocalDate() }.max().requireNotNull(),
-            førsteFraværsdag = førsteFraværsdag,
-            forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
-        )
-            .republish(vedtakproducer, vedtaksfeedTopic)
+        try {
+            val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
+            Vedtak(
+                type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
+                opprettet = packet["opprettet"].asLocalDateTime(),
+                aktørId = packet["aktørId"].textValue(),
+                fødselsnummer = packet["fødselsnummer"].textValue(),
+                førsteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
+                    .map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull(),
+                sisteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
+                    .map { it["tom"].asLocalDate() }.max().requireNotNull(),
+                førsteFraværsdag = førsteFraværsdag,
+                forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
+            )
+                .republish(vedtakproducer, vedtaksfeedTopic)
+        } catch (e: Exception) {
+            tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
+            throw e
+        }
     }
 }
 
@@ -60,18 +68,24 @@ class UtbetaltRiverV2(
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
-        Vedtak(
-            type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
-            opprettet = packet["opprettet"].asLocalDateTime(),
-            aktørId = packet["aktørId"].textValue(),
-            fødselsnummer = packet["fødselsnummer"].textValue(),
-            førsteStønadsdag = packet["utbetalingslinjer"].map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull(),
-            sisteStønadsdag = packet["utbetalingslinjer"].map { it["tom"].asLocalDate() }.max().requireNotNull(),
-            førsteFraværsdag = førsteFraværsdag,
-            forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
-        )
-            .republish(vedtakproducer, vedtaksfeedTopic)
+        try {
+            val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
+            Vedtak(
+                type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
+                opprettet = packet["opprettet"].asLocalDateTime(),
+                aktørId = packet["aktørId"].textValue(),
+                fødselsnummer = packet["fødselsnummer"].textValue(),
+                førsteStønadsdag = packet["utbetalingslinjer"].map { it["fom"].asLocalDate() }
+                    .filter { it >= førsteFraværsdag }.min().requireNotNull(),
+                sisteStønadsdag = packet["utbetalingslinjer"].map { it["tom"].asLocalDate() }.max().requireNotNull(),
+                førsteFraværsdag = førsteFraværsdag,
+                forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
+            )
+                .republish(vedtakproducer, vedtaksfeedTopic)
+        } catch (e: Exception) {
+            tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
+            throw e
+        }
     }
 }
 
