@@ -82,5 +82,5 @@ private fun Vedtak.republish(
     vedtaksfeedtopic: String
 ) {
     vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this)).get()
-        .also { log.info("Republiserer vedtak på intern topic") }
+        .also { log.info("Republiserer vedtak på intern topic med offset ${it.offset()}") }
 }
