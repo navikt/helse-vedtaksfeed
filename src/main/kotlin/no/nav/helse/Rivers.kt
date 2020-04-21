@@ -54,5 +54,5 @@ private fun JsonMessage.republish(
 ) {
     val fødselsnummer = this["fødselsnummer"].asText()
     vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this.toJson())).get()
-        .also { log.info("Republiserer vedtak med key:$fødselsnummer på intern topic") }
+        .also { log.info("Republiserer vedtak på intern topic") }
 }
