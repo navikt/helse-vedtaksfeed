@@ -8,7 +8,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import java.time.Duration
-import java.time.LocalDate
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -35,7 +34,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
     }
 }
 
-private fun List<FeedElement>.toFeed(maksAntall: Int) = Feed(
+private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
     tittel = "SykepengerVedtaksperioder",
     inneholderFlereElementer = maksAntall == size,
     elementer = this
@@ -43,47 +42,16 @@ private fun List<FeedElement>.toFeed(maksAntall: Int) = Feed(
 
 private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
     this.value().let { vedtak ->
-        val førsteStønadsdag: LocalDate
-        val sisteStønadsdag: LocalDate
-        when (vedtak) {
-            is Vedtak.VedtakV1 -> {
-                førsteStønadsdag = førsteStønadsdag(
-                    vedtak.utbetaling.flatMap { it.utbetalingslinjer },
-                    vedtak.førsteFraværsdag
-                )
-                sisteStønadsdag = sisteStønadsdag(vedtak.utbetaling.flatMap { it.utbetalingslinjer })
-            }
-
-            is Vedtak.VedtakV2 -> {
-                førsteStønadsdag = førsteStønadsdag(
-                    vedtak.utbetalingslinjer,
-                    vedtak.førsteFraværsdag
-                )
-                sisteStønadsdag = sisteStønadsdag(vedtak.utbetalingslinjer)
-            }
-        }
-
-        FeedElement(
-            type = Vedtakstype.SykepengerUtbetalt_v1.name,
+        Feed.Element(
+            type = vedtak.type.name,
             sekvensId = this.offset(),
-            metadata = FeedElementMetadata(opprettetDato = vedtak.opprettet),
-            innhold = FeedElementInnhold(
+            metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
+            innhold = Feed.Element.Innhold(
                 aktoerId = vedtak.aktørId,
-                foersteStoenadsdag = førsteStønadsdag,
-                sisteStoenadsdag = sisteStønadsdag,
+                foersteStoenadsdag = vedtak.førsteStønadsdag,
+                sisteStoenadsdag = vedtak.sisteStønadsdag,
                 utbetalingsreferanse = vedtak.førsteFraværsdag,
-                forbrukteStoenadsdager = vedtak.forbrukteSykedager
+                forbrukteStoenadsdager = vedtak.forbrukteStønadsdager
             )
         )
     }
-
-private fun sisteStønadsdag(list: List<Utbetalingslinje>) = list.map { it.tom }.max().requireNotNull()
-
-private fun førsteStønadsdag(list: List<Utbetalingslinje>, førsteFraværsdag: LocalDate): LocalDate =
-    list.map { it.fom }.filter { it >= førsteFraværsdag }.min().requireNotNull()
-
-private fun LocalDate?.requireNotNull() = requireNotNull(this) { "Ingen utbetalinger i vedtak" }
-
-enum class Vedtakstype {
-    SykepengerUtbetalt_v1, SykepengerAnnullert_v1
-}

@@ -55,5 +55,5 @@ fun Properties.toSeekingConsumer() = Properties().also {
 fun Properties.toProducerConfig(): Properties = Properties().also {
     it.putAll(this)
     it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-    it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+    it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = VedtakSerializer::class.java
 }

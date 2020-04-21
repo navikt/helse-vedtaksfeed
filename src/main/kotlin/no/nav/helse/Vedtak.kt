@@ -2,7 +2,7 @@ package no.nav.helse
 
 import java.time.LocalDate
 
-sealed class Vedtak(
+sealed class Vedtak2(
     val aktørId: String,
     val fødselsnummer: String,
     val førsteFraværsdag: LocalDate,
@@ -15,7 +15,7 @@ sealed class Vedtak(
         førsteFraværsdag: LocalDate,
         opprettet: LocalDate,
         val utbetaling: List<Utbetalingslinjer>
-    ): Vedtak(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
+    ): Vedtak2(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
 
     class VedtakV2(
         aktørId: String,
@@ -23,7 +23,7 @@ sealed class Vedtak(
         førsteFraværsdag: LocalDate,
         opprettet: LocalDate,
         val utbetalingslinjer: List<Utbetalingslinje>
-    ): Vedtak(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
+    ): Vedtak2(aktørId, fødselsnummer, førsteFraværsdag, opprettet)
 }
 
 data class Utbetalingslinjer(

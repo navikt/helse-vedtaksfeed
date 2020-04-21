@@ -83,7 +83,7 @@ internal class EndToEndTest {
             }
         }.apply {
             start()
-            val internVedtakProducer = KafkaProducer<String, String>(loadTestConfig().toProducerConfig())
+            val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
             UtbetaltRiverV1(this, internVedtakProducer, internTopic)
             UtbetaltRiverV2(this, internVedtakProducer, internTopic)
         }
@@ -262,7 +262,7 @@ private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
         }
       ],
       "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01",
+      "opprettet": "2018-01-01T12:00:00",
       "system_read_count": 0
     }
 """
@@ -293,7 +293,7 @@ private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
         }
       ],
       "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01",
+      "opprettet": "2018-01-01T12:00:00",
       "system_read_count": 0
     }
 """
@@ -314,7 +314,7 @@ private fun vedtakMedUtbetalingslinjernøkkel(fom: LocalDate, tom: LocalDate) = 
         }
       ],
       "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01",
+      "opprettet": "2018-01-01T12:00:00",
       "system_read_count": 0
     }
 """

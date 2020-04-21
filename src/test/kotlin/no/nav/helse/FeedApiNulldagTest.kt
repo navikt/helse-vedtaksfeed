@@ -90,26 +90,13 @@ internal class FeedApiNulldagTest {
 
 private fun vedtak(fom: LocalDate, tom: LocalDate) = """
     {
-      "@event_name": "utbetalt",
+      "type": "SykepengerUtbetalt_v1",
+      "opprettet": "2018-01-01T12:00:00",
       "aktørId": "aktørId",
       "fødselsnummer": "fnr",
+      "førsteStønadsdag": "$fom",
+      "sisteStønadsdag": "$tom",
       "førsteFraværsdag": "$fom",
-      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
-      "utbetaling": [
-        {
-          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
-          "utbetalingslinjer": [
-            {
-              "fom": "$fom",
-              "tom": "$tom",
-              "dagsats": 1000,
-              "grad": 100.0
-            }
-          ]
-        }
-      ],
-      "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01",
-      "system_read_count": 0
+      "forbrukteStønadsdager": 123
     }
 """
