@@ -1,5 +1,6 @@
 package no.nav.helse
 
+import com.fasterxml.jackson.databind.JsonNode
 import no.nav.helse.rapids_rivers.*
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -31,15 +32,15 @@ class UtbetaltRiverV1(
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
             val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
+            val (førsteStønadsdag, sisteStønadsdag) =
+                packet["utbetaling"].flatMap { it["utbetalingslinjer"] }.stønadsdager(førsteFraværsdag)
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["opprettet"].asLocalDateTime(),
                 aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].textValue(),
-                førsteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
-                    .map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull(),
-                sisteStønadsdag = packet["utbetaling"].flatMap { it["utbetalingslinjer"] }
-                    .map { it["tom"].asLocalDate() }.max().requireNotNull(),
+                førsteStønadsdag = førsteStønadsdag,
+                sisteStønadsdag = sisteStønadsdag,
                 førsteFraværsdag = førsteFraværsdag,
                 forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
             )
@@ -70,14 +71,15 @@ class UtbetaltRiverV2(
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
             val førsteFraværsdag = packet["førsteFraværsdag"].asLocalDate()
+            val (førsteStønadsdag, sisteStønadsdag) =
+                packet["utbetalingslinjer"].toList().stønadsdager(førsteFraværsdag)
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["opprettet"].asLocalDateTime(),
                 aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].textValue(),
-                førsteStønadsdag = packet["utbetalingslinjer"].map { it["fom"].asLocalDate() }
-                    .filter { it >= førsteFraværsdag }.min().requireNotNull(),
-                sisteStønadsdag = packet["utbetalingslinjer"].map { it["tom"].asLocalDate() }.max().requireNotNull(),
+                førsteStønadsdag = førsteStønadsdag,
+                sisteStønadsdag = sisteStønadsdag,
                 førsteFraværsdag = førsteFraværsdag,
                 forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
             )
@@ -87,6 +89,14 @@ class UtbetaltRiverV2(
             throw e
         }
     }
+
+}
+
+private fun List<JsonNode>.stønadsdager(førsteFraværsdag: LocalDate): Pair<LocalDate, LocalDate> {
+    if (size == 1) return first()["fom"].asLocalDate() to first()["tom"].asLocalDate()
+    val førsteStønadsdag = map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull()
+    val sisteStønadsdag = map { it["tom"].asLocalDate() }.max().requireNotNull()
+    return førsteStønadsdag to sisteStønadsdag
 }
 
 private fun LocalDate?.requireNotNull() = requireNotNull(this) { "Ingen utbetalinger i vedtak" }

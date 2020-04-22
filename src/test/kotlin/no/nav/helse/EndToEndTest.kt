@@ -88,7 +88,7 @@ internal class EndToEndTest {
             UtbetaltRiverV2(this, internVedtakProducer, internTopic)
         }
 
-        repeat(100) {
+        repeat(99) {
             rapid.sendToListeners(
                 vedtakMedUtbetalingslinjernøkkel(
                     LocalDate.of(2018, 1, 1).plusDays(it.toLong()),
@@ -96,6 +96,9 @@ internal class EndToEndTest {
                 )
             )
         }
+        rapid.sendToListeners(
+            vedtakForQuickFix(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
+        )
         rapid.sendToListeners(
             vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
         )
@@ -240,6 +243,32 @@ internal class EndToEndTest {
         }
 
 }
+
+private fun vedtakForQuickFix(fom: LocalDate, tom: LocalDate) = """
+    {
+      "@event_name": "utbetalt",
+      "aktørId": "aktørId",
+      "fødselsnummer": "fnr",
+      "førsteFraværsdag": "${fom.plusDays(1)}",
+      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
+      "utbetaling": [
+        {
+          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
+          "utbetalingslinjer": [
+            {
+              "fom": "$fom",
+              "tom": "$tom",
+              "dagsats": 1000,
+              "grad": 100.0
+            }
+          ]
+        }
+      ],
+      "forbrukteSykedager": 123,
+      "opprettet": "2018-01-01T12:00:00",
+      "system_read_count": 0
+    }
+"""
 
 private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
     {
