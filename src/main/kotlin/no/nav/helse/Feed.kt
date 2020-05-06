@@ -18,7 +18,7 @@ class Feed(
             val aktoerId: String,
             val foersteStoenadsdag: LocalDate,
             val sisteStoenadsdag: LocalDate,
-            val utbetalingsreferanse: LocalDate,
+            val utbetalingsreferanse: String,
             val forbrukteStoenadsdager: Int
         )
 
@@ -35,7 +35,7 @@ class Vedtak(
     val fødselsnummer: String,
     val førsteStønadsdag: LocalDate,
     val sisteStønadsdag: LocalDate,
-    val førsteFraværsdag: LocalDate,
+    val førsteFraværsdag: String, //used as utbetalingsreferanse in the feed
     val forbrukteStønadsdager: Int
 ) {
     enum class Vedtakstype {

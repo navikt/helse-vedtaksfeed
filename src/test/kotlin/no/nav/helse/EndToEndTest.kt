@@ -12,6 +12,7 @@ import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.inMemoryRapid
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
@@ -244,6 +245,7 @@ internal class EndToEndTest {
 
 }
 
+@Language("JSON")
 private fun vedtakForQuickFix(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
@@ -270,6 +272,7 @@ private fun vedtakForQuickFix(fom: LocalDate, tom: LocalDate) = """
     }
 """
 
+@Language("JSON")
 private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
@@ -296,6 +299,7 @@ private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
     }
 """
 
+@Language("JSON")
 private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
@@ -327,6 +331,7 @@ private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
     }
 """
 
+@Language("JSON")
 private fun vedtakMedUtbetalingslinjernøkkel(fom: LocalDate, tom: LocalDate) = """
     {
       "@event_name": "utbetalt",
