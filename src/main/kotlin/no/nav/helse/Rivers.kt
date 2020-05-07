@@ -104,7 +104,7 @@ class UtbetaltRiverV3(
                 it.requireValue("@event_name", "utbetalt")
                 it.requireKey("opprettet", "aktørId", "fødselsnummer", "forbrukteSykedager")
                 it.requireArray("utbetalt") {
-                    requireKey("mottaker", "fagområde", "fagsystemId", "totalbeløp", "utbetalingslinjer")
+                    requireKey("mottaker", "fagområde", "fagsystemId", "totalbeløp", "utbetalingslinjer", "fom", "tom", "forbrukteSykedager")
                 }
             }
         }.register(this)
