@@ -112,7 +112,7 @@ class UtbetaltRiverV3(
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
-            packet["oppdrag"].forEach {
+            packet["utbetalt"].forEach {
                 val fagsystemId = it["fagsystemId"].textValue()
                 it["utbetalingslinjer"].forEach {
                     Vedtak(
