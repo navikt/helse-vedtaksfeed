@@ -41,7 +41,7 @@ class UtbetaltRiverV1(
                 fødselsnummer = packet["fødselsnummer"].textValue(),
                 førsteStønadsdag = førsteStønadsdag,
                 sisteStønadsdag = sisteStønadsdag,
-                førsteFraværsdag = førsteFraværsdag,
+                førsteFraværsdag = førsteFraværsdag.toString(),
                 forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
             )
                 .republish(vedtakproducer, vedtaksfeedTopic)
@@ -80,7 +80,7 @@ class UtbetaltRiverV2(
                 fødselsnummer = packet["fødselsnummer"].textValue(),
                 førsteStønadsdag = førsteStønadsdag,
                 sisteStønadsdag = sisteStønadsdag,
-                førsteFraværsdag = førsteFraværsdag,
+                førsteFraværsdag = førsteFraværsdag.toString(),
                 forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
             )
                 .republish(vedtakproducer, vedtaksfeedTopic)
@@ -112,32 +112,27 @@ class UtbetaltRiverV3(
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
-            packet["utbetalt"].flatMap { it["utbetalingslinjer"] }.stønadsdager()
-                .forEach { (førsteStønadsdag, sisteStønadsdag, førsteFraværsdag) ->
+            packet["oppdrag"].forEach {
+                val fagsystemId = it["fagsystemId"].textValue()
+                it["utbetalingslinjer"].forEach {
                     Vedtak(
                         type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                         opprettet = packet["opprettet"].asLocalDateTime(),
                         aktørId = packet["aktørId"].textValue(),
                         fødselsnummer = packet["fødselsnummer"].textValue(),
-                        førsteStønadsdag = førsteStønadsdag,
-                        sisteStønadsdag = sisteStønadsdag,
-                        førsteFraværsdag = førsteFraværsdag,
+                        førsteStønadsdag = LocalDate.parse(packet["fom"].textValue()),
+                        sisteStønadsdag = LocalDate.parse(packet["tom"].textValue()),
+                        førsteFraværsdag = fagsystemId,
                         forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
-                    )
-                        .republish(vedtakproducer, vedtaksfeedTopic)
+                    ).republish(vedtakproducer, vedtaksfeedTopic)
                 }
+            }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
         }
     }
 
-}
-
-private fun List<JsonNode>.stønadsdager(): List<Triple<LocalDate, LocalDate, LocalDate>> {
-    val førsteStønadsdag = map { it["fom"].asLocalDate() }.min().requireNotNull()
-    val sisteStønadsdag = map { it["tom"].asLocalDate() }.max().requireNotNull()
-    return Triple(førsteStønadsdag, sisteStønadsdag, førsteFraværsdag)
 }
 
 private fun List<JsonNode>.stønadsdager(førsteFraværsdag: LocalDate): Pair<LocalDate, LocalDate> {

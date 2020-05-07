@@ -6,14 +6,12 @@ import io.ktor.routing.routing
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication
 import no.nav.common.KafkaEnvironment
-import org.apache.commons.codec.binary.Base32
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
 import java.time.LocalDate
 import java.util.*
 import kotlin.test.assertEquals
@@ -73,8 +71,8 @@ internal class FeedApiNulldagTest {
                     "Feed skal ha elementer når det er mer enn ett element på topic"
                 )
                 assertEquals(2, feed.elementer.size)
-                assertEquals(fom1, feed.elementer[0].innhold.utbetalingsreferanse)
-                assertEquals(fom2, feed.elementer[1].innhold.utbetalingsreferanse)
+                assertEquals(fom1.toString(), feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(fom2.toString(), feed.elementer[1].innhold.utbetalingsreferanse)
             }
         }
         embeddedKafkaEnvironment.close()

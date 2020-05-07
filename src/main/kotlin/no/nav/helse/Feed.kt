@@ -35,7 +35,7 @@ class Vedtak(
     val fødselsnummer: String,
     val førsteStønadsdag: LocalDate,
     val sisteStønadsdag: LocalDate,
-    val førsteFraværsdag: String, //used as utbetalingsreferanse in the feed
+    val førsteFraværsdag: String,
     val forbrukteStønadsdager: Int
 ) {
     enum class Vedtakstype {
