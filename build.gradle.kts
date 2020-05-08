@@ -4,7 +4,7 @@ val junitJupiterVersion = "5.5.2"
 val ktorVersion = "1.3.1"
 
 val kafkaVersion = "2.3.1"
-val rapidsAndRiversVersion = "1.35001d7"
+val rapidsAndRiversVersion = "1.47c31b4"
 
 val wireMockVersion = "2.19.0"
 

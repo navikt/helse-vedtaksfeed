@@ -102,9 +102,12 @@ class UtbetaltRiverV3(
         River(rapidsConnection).apply {
             validate {
                 it.requireValue("@event_name", "utbetalt")
-                it.requireKey("opprettet", "aktørId", "fødselsnummer", "forbrukteSykedager")
+                it.requireKey("opprettet", "aktørId", "fødselsnummer")
                 it.requireArray("utbetalt") {
-                    requireKey("mottaker", "fagområde", "fagsystemId", "totalbeløp", "utbetalingslinjer")
+                    requireArray("utbetalingslinjer") {
+                        requireKey("fom", "tom", "sykedager")
+                    }
+                    requireKey("fagsystemId", "totalbeløp")
                 }
             }
         }.register(this)
@@ -112,18 +115,18 @@ class UtbetaltRiverV3(
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
-            packet["utbetalt"].forEach {
-                val fagsystemId = it["fagsystemId"].textValue()
-                it["utbetalingslinjer"].forEach {
+            packet["utbetalt"].forEach { utbetaling ->
+                val fagsystemId = utbetaling["fagsystemId"].textValue()
+                utbetaling["utbetalingslinjer"].forEach { linje ->
                     Vedtak(
                         type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                         opprettet = packet["opprettet"].asLocalDateTime(),
                         aktørId = packet["aktørId"].textValue(),
-                        fødselsnummer = packet["fødselsnummer"].textValue(),
-                        førsteStønadsdag = LocalDate.parse(packet["fom"].textValue()),
-                        sisteStønadsdag = LocalDate.parse(packet["tom"].textValue()),
+                        fødselsnummer = packet["fødselsnummer"].asText(),
+                        førsteStønadsdag = LocalDate.parse(linje["fom"].asText()),
+                        sisteStønadsdag = LocalDate.parse(linje["tom"].asText()),
                         førsteFraværsdag = fagsystemId,
-                        forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
+                        forbrukteStønadsdager = linje["sykedager"].intValue()
                     ).republish(vedtakproducer, vedtaksfeedTopic)
                 }
             }

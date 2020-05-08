@@ -89,6 +89,7 @@ internal class EndToEndTest {
             val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
             UtbetaltRiverV1(this, internVedtakProducer, internTopic)
             UtbetaltRiverV2(this, internVedtakProducer, internTopic)
+            UtbetaltRiverV3(this, internVedtakProducer, internTopic)
         }
 
         repeat(99) {
@@ -103,11 +104,12 @@ internal class EndToEndTest {
             vedtakForQuickFix(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
         )
         rapid.sendToListeners(
-            vedtakMedFlereLinjer(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
+            vedtakMedFlereLinjer(LocalDate.of(2019, 2, 1), LocalDate.of(2019, 2, 20))
         )
         rapid.sendToListeners(
             vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31))
         )
+        rapid.sendToListeners(vedtakV3(LocalDate.of(2019, 4, 1), LocalDate.of(2019, 4, 20), 40))
     }
 
     @AfterAll
@@ -151,7 +153,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(20, feed.elementer.size)
+            assertEquals(21, feed.elementer.size)
         }
     }
 
@@ -176,7 +178,7 @@ internal class EndToEndTest {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(LocalDate.of(2019, 1, 1), feed.elementer.first().innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 2, 1), feed.elementer.first().innhold.foersteStoenadsdag)
             }
         }
     }
@@ -184,13 +186,34 @@ internal class EndToEndTest {
     @Test
     fun `takler alle meldingsformater`() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=99&maxAntall=1000".httpGet {
+            "/feed?sistLesteSekvensId=98&maxAntall=1000".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(LocalDate.of(2019, 3, 1), feed.elementer.last().innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 3, 31), feed.elementer.last().innhold.sisteStoenadsdag)
+
+                assertEquals(4, feed.elementer.size)
+                assertEquals(LocalDate.of(2019, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 1, 31), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 2, 1), feed.elementer[1].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 2, 20), feed.elementer[1].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 3, 1), feed.elementer[2].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 3, 31), feed.elementer[2].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 4, 1), feed.elementer[3].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 4, 20), feed.elementer[3].innhold.sisteStoenadsdag)
             }
         }
     }
+
+    @Test
+    fun `sjekker innhold i vedtak fra utbetalingv3`() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+
+                assertEquals(LocalDate.of(2019, 4, 1), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 4, 20), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
+                assertEquals(15, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("77ATRH3QENHB5K4XUY4LQ7HRTY", feed.elementer[0].innhold.utbetalingsreferanse)
+    }}}
 
     private fun loadTestConfig(): Properties = Properties().also {
         it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
@@ -356,7 +379,7 @@ private fun vedtakMedUtbetalingslinjernøkkel(fom: LocalDate, tom: LocalDate) = 
 """
 
 @Language("JSON")
-private fun vedtakV3(fom: LocalDate, tom: LocalDate) = """{
+private fun vedtakV3(fom: LocalDate, tom: LocalDate, tidligereBrukteSykedager: Int) = """{
     "aktørId": "aktørId",
     "fødselsnummer": "fnr",
     "organisasjonsnummer": "orgnummer",
@@ -393,8 +416,8 @@ private fun vedtakV3(fom: LocalDate, tom: LocalDate) = """{
     ],
     "fom": "$fom",
     "tom": "$tom",
-    "forbrukteSykedager": ${sykedager(fom, tom)},
-    "gjenståendeSykedager": ${248 - sykedager(fom, tom)},
+    "forbrukteSykedager": ${tidligereBrukteSykedager + sykedager(fom, tom)},
+    "gjenståendeSykedager": ${248 - tidligereBrukteSykedager - sykedager(fom, tom)},
     "opprettet": "2020-05-04T11:26:30.23846",
     "system_read_count": 0,
     "@event_name": "utbetalt",
