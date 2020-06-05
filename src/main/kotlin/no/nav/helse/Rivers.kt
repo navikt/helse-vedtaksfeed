@@ -115,21 +115,26 @@ class UtbetaltRiverV3(
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
-            packet["utbetalt"].forEach { utbetaling ->
-                val fagsystemId = utbetaling["fagsystemId"].textValue()
-                utbetaling["utbetalingslinjer"].forEach { linje ->
+            packet["utbetalt"]
+                .filter { !it["utbetalingslinjer"].isEmpty }
+                .forEach { utbetaling ->
+                    val fagsystemId = utbetaling["fagsystemId"].textValue()
+                    val utbetalingslinjer = utbetaling["utbetalingslinjer"]
+                    val forbrukteStønadsdager =
+                        utbetalingslinjer.fold(0) { acc, jsonNode -> acc + jsonNode["sykedager"].intValue() }
+                    val fom = utbetalingslinjer.map { it["fom"].asLocalDate() }.min()!!
+                    val tom = utbetalingslinjer.map { it["tom"].asLocalDate() }.max()!!
                     Vedtak(
                         type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                         opprettet = packet["opprettet"].asLocalDateTime(),
                         aktørId = packet["aktørId"].textValue(),
                         fødselsnummer = packet["fødselsnummer"].asText(),
-                        førsteStønadsdag = LocalDate.parse(linje["fom"].asText()),
-                        sisteStønadsdag = LocalDate.parse(linje["tom"].asText()),
+                        førsteStønadsdag = fom,
+                        sisteStønadsdag = tom,
                         førsteFraværsdag = fagsystemId,
-                        forbrukteStønadsdager = linje["sykedager"].intValue()
+                        forbrukteStønadsdager = forbrukteStønadsdager
                     ).republish(vedtakproducer, vedtaksfeedTopic)
                 }
-            }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e

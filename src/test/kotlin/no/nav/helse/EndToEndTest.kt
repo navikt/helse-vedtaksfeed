@@ -110,6 +110,15 @@ internal class EndToEndTest {
             vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31))
         )
         rapid.sendToListeners(vedtakV3(LocalDate.of(2019, 4, 1), LocalDate.of(2019, 4, 20), 40))
+        rapid.sendToListeners(
+            LocalDate.of(2019, 5, 1).let { førsteFom ->
+                vedtakV3MedFlereLinjer(
+                    førsteFom to førsteFom.plusDays(19),
+                    førsteFom.plusDays(20) to førsteFom.plusDays(30),
+                    60
+                )
+            }
+        )
     }
 
     @AfterAll
@@ -153,7 +162,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(21, feed.elementer.size)
+            assertEquals(22, feed.elementer.size)
         }
     }
 
@@ -186,10 +195,9 @@ internal class EndToEndTest {
     @Test
     fun `takler alle meldingsformater`() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=98&maxAntall=1000".httpGet {
+            "/feed?sistLesteSekvensId=98&maxAntall=4".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
 
-                assertEquals(4, feed.elementer.size)
                 assertEquals(LocalDate.of(2019, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2019, 1, 31), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals(LocalDate.of(2019, 2, 1), feed.elementer[1].innhold.foersteStoenadsdag)
@@ -198,6 +206,19 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2019, 3, 31), feed.elementer[2].innhold.sisteStoenadsdag)
                 assertEquals(LocalDate.of(2019, 4, 1), feed.elementer[3].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2019, 4, 20), feed.elementer[3].innhold.sisteStoenadsdag)
+            }
+        }
+    }
+
+    @Test
+    fun `flere utbetalingslinjer slås sammen`() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=102&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+
+                assertEquals(LocalDate.of(2019, 5, 1), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2019, 5, 31), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(23, feed.elementer[0].innhold.forbrukteStoenadsdager)
             }
         }
     }
@@ -213,7 +234,9 @@ internal class EndToEndTest {
                 assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
                 assertEquals(15, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("77ATRH3QENHB5K4XUY4LQ7HRTY", feed.elementer[0].innhold.utbetalingsreferanse)
-    }}}
+            }
+        }
+    }
 
     private fun loadTestConfig(): Properties = Properties().also {
         it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
@@ -418,6 +441,71 @@ private fun vedtakV3(fom: LocalDate, tom: LocalDate, tidligereBrukteSykedager: I
     "tom": "$tom",
     "forbrukteSykedager": ${tidligereBrukteSykedager + sykedager(fom, tom)},
     "gjenståendeSykedager": ${248 - tidligereBrukteSykedager - sykedager(fom, tom)},
+    "opprettet": "2020-05-04T11:26:30.23846",
+    "system_read_count": 0,
+    "@event_name": "utbetalt",
+    "@id": "e8eb9ffa-57b7-4fe0-b44c-471b2b306bb6",
+    "@opprettet": "2020-05-04T11:27:13.521398",
+    "@forårsaket_av": {
+        "event_name": "behov",
+        "id": "cf28fbba-562e-4841-b366-be1456fdccee",
+        "opprettet": "2020-05-04T11:26:47.088455"
+    }
+}
+"""
+
+@Language("JSON")
+private fun vedtakV3MedFlereLinjer(
+    førsteLine: Pair<LocalDate, LocalDate>,
+    andreLinje: Pair<LocalDate, LocalDate>,
+    tidligereBrukteSykedager: Int
+) = """{
+    "aktørId": "aktørId",
+    "fødselsnummer": "fnr",
+    "organisasjonsnummer": "orgnummer",
+    "hendelser": [
+        "7c1a1edb-60b9-4a1f-b976-ef39d4d5021c",
+        "798f60a1-6f6f-4d07-a036-1f89bd36baca",
+        "ee8bc585-e898-4f4c-8662-f2a9b394896e"
+    ],
+    "utbetalt": [
+        {
+            "mottaker": "orgnummer",
+            "fagområde": "SPREF",
+            "fagsystemId": "77ATRH3QENHB5K4XUY4LQ7HRTY",
+            "førsteSykepengedag": "",
+            "totalbeløp": 8586,
+            "utbetalingslinjer": [
+                {
+                    "fom": "${førsteLine.first}",
+                    "tom": "${førsteLine.second}",
+                    "dagsats": 1431,
+                    "beløp": 1431,
+                    "grad": 100.0,
+                    "sykedager": ${sykedager(førsteLine.first, førsteLine.second)}
+                },
+                {
+                    "fom": "${andreLinje.first}",
+                    "tom": "${andreLinje.second}",
+                    "dagsats": 1431,
+                    "beløp": 1431,
+                    "grad": 100.0,
+                    "sykedager": ${sykedager(andreLinje.first, andreLinje.second)}
+                }
+            ]
+        },
+        {
+            "mottaker": "fnr",
+            "fagområde": "SP",
+            "fagsystemId": "353OZWEIBBAYZPKU6WYKTC54SE",
+            "totalbeløp": 0,
+            "utbetalingslinjer": []
+        }
+    ],
+    "fom": "${førsteLine.first}",
+    "tom": "${andreLinje.second}",
+    "forbrukteSykedager": ${tidligereBrukteSykedager + sykedager(førsteLine.first, andreLinje.second)},
+    "gjenståendeSykedager": ${248 - tidligereBrukteSykedager - sykedager(førsteLine.first, andreLinje.second)},
     "opprettet": "2020-05-04T11:26:30.23846",
     "system_read_count": 0,
     "@event_name": "utbetalt",
