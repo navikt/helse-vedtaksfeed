@@ -122,8 +122,8 @@ class UtbetaltRiverV3(
                     val utbetalingslinjer = utbetaling["utbetalingslinjer"]
                     val forbrukteStønadsdager =
                         utbetalingslinjer.fold(0) { acc, jsonNode -> acc + jsonNode["sykedager"].intValue() }
-                    val fom = utbetalingslinjer.map { it["fom"].asLocalDate() }.min()!!
-                    val tom = utbetalingslinjer.map { it["tom"].asLocalDate() }.max()!!
+                    val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.min())
+                    val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.max())
                     Vedtak(
                         type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                         opprettet = packet["opprettet"].asLocalDateTime(),
