@@ -1,15 +1,15 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.5.2"
-val ktorVersion = "1.3.1"
+val ktorVersion = "1.3.2"
 
 val kafkaVersion = "2.3.1"
-val rapidsAndRiversVersion = "1.47c31b4"
+val rapidsAndRiversVersion = "1.74ae9cb"
 
 val wireMockVersion = "2.19.0"
 
 plugins {
-    kotlin("jvm") version "1.3.61"
+    kotlin("jvm") version "1.3.72"
 }
 
 group = "no.nav.helse"
@@ -19,8 +19,8 @@ val githubPassword: String by project
 
 repositories {
     mavenCentral()
-    maven("http://packages.confluent.io/maven/")
-    maven("https://dl.bintray.com/kotlin/kotlinx/")
+    maven("https://packages.confluent.io/maven/")
+    maven("https://kotlin.bintray.com/ktor")
     maven {
         url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {
@@ -31,18 +31,8 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-jackson:$ktorVersion")
-    implementation("org.apache.kafka:kafka-clients:$kafkaVersion")
-
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.10")
-
-    implementation("org.slf4j:slf4j-api:1.7.29")
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("net.logstash.logback:logstash-logback-encoder:6.2")
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
@@ -50,7 +40,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
 
-    testImplementation("no.nav:kafka-embedded-env:2.3.0")
+    testImplementation("no.nav:kafka-embedded-env:2.4.0")
     testImplementation("org.awaitility:awaitility:4.0.1")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
@@ -67,7 +57,11 @@ java {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "12"
+}
+
+tasks.named<KotlinCompile>("compileTestKotlin") {
+    kotlinOptions.jvmTarget = "12"
 }
 
 tasks.named<Jar>("jar") {
