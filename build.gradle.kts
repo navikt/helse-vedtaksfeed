@@ -11,14 +11,10 @@ plugins {
 
 group = "no.nav.helse"
 
-val githubUser: String by project
-val githubPassword: String by project
-
 repositories {
-    mavenCentral()
-    maven("https://packages.confluent.io/maven/")
-    maven("https://kotlin.bintray.com/ktor")
+    jcenter()
     maven("https://jitpack.io")
+    maven("http://packages.confluent.io/maven/")
 }
 
 dependencies {
@@ -46,36 +42,38 @@ java {
     targetCompatibility = JavaVersion.VERSION_12
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "12"
-}
+tasks {
+    withType<KotlinCompile> {
+        kotlinOptions.jvmTarget = "12"
+    }
 
-tasks.named<KotlinCompile>("compileTestKotlin") {
-    kotlinOptions.jvmTarget = "12"
-}
+    named<KotlinCompile>("compileTestKotlin") {
+        kotlinOptions.jvmTarget = "12"
+    }
 
-tasks.named<Jar>("jar") {
-    archiveBaseName.set("app")
+    withType<Jar> {
+        archiveBaseName.set("app")
 
-    manifest {
-        attributes["Main-Class"] = "no.nav.helse.AppKt"
-        attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
-            it.name
+        manifest {
+            attributes["Main-Class"] = "no.nav.helse.AppKt"
+            attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
+                it.name
+            }
+        }
+
+        doLast {
+            configurations.runtimeClasspath.get().forEach {
+                val file = File("$buildDir/libs/${it.name}")
+                if (!file.exists())
+                    it.copyTo(file)
+            }
         }
     }
 
-    doLast {
-        configurations.runtimeClasspath.get().forEach {
-            val file = File("$buildDir/libs/${it.name}")
-            if (!file.exists())
-                it.copyTo(file)
+    withType<Test> {
+        useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
         }
-    }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-    testLogging {
-        events("passed", "skipped", "failed")
     }
 }
