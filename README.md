@@ -4,7 +4,8 @@
 ## Beskrivelse
 Vedtaksfeed formidler sykepengevedtak til Infotrygd.
 
-## Kjøretidsavhengigheter
+## Henvendelser
+Spørsmål knyttet til koden eller prosjektet kan stilles som issues her på GitHub.
 
-* JDK 12
-* Kafka
+### For NAV-ansatte
+Interne henvendelser kan sendes via Slack i kanalen #område-helse.
