@@ -5,10 +5,9 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import no.nav.common.KafkaEnvironment
+import no.nav.helse.rapids_rivers.InMemoryRapid
 import no.nav.helse.rapids_rivers.inMemoryRapid
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
@@ -50,46 +49,18 @@ internal class EndToEndTest {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        wireMockServer.start()
-        await("vent på WireMockServer har startet")
-            .atMost(5, TimeUnit.SECONDS)
-            .until {
-                try {
-                    Socket("localhost", wireMockServer.port()).use { it.isConnected }
-                } catch (err: Exception) {
-                    false
-                }
-            }
-        val jwtIssuer = "jwtIssuer"
-        jwtStub = JwtStub(jwtIssuer, wireMockServer)
-        WireMock.stubFor(jwtStub.stubbedJwkProvider())
-        WireMock.stubFor(jwtStub.stubbedConfigProvider())
+        val jwtIssuer = mockAuthentication()
 
         val randomPort = ServerSocket(0).use { it.localPort }
         appBaseUrl = "http://localhost:$randomPort"
 
-        val rapid = inMemoryRapid {
-            ktor {
-                port(randomPort)
-                module {
-                    val testEnv = Environment(
-                        kafkaBootstrapServers = "",
-                        jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                        jwtIssuer = jwtIssuer
-                    )
-                    vedtaksfeed(
-                        testEnv,
-                        JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
-                        loadTestConfig().toProducerConfig()
-                    )
-                }
-            }
-        }.apply {
+        val rapid = lagHelseRapid(randomPort, jwtIssuer).apply {
             start()
             val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
             UtbetaltRiverV1(this, internVedtakProducer, internTopic)
             UtbetaltRiverV2(this, internVedtakProducer, internTopic)
             UtbetaltRiverV3(this, internVedtakProducer, internTopic)
+            AnnullertRiverV1(this, internVedtakProducer, internTopic)
         }
 
         repeat(99) {
@@ -119,6 +90,46 @@ internal class EndToEndTest {
                 )
             }
         )
+        rapid.sendToListeners(annullering)
+    }
+
+    private fun lagHelseRapid(randomPort: Int, jwtIssuer: String): InMemoryRapid {
+        return inMemoryRapid {
+            ktor {
+                port(randomPort)
+                module {
+                    val testEnv = Environment(
+                        kafkaBootstrapServers = "",
+                        jwksUrl = "${wireMockServer.baseUrl()}/jwks",
+                        jwtIssuer = jwtIssuer,
+                        enableAnnullering = true
+                    )
+                    vedtaksfeed(
+                        testEnv,
+                        JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
+                        loadTestConfig().toProducerConfig()
+                    )
+                }
+            }
+        }
+    }
+
+    private fun mockAuthentication(): String {
+        wireMockServer.start()
+        await("vent på WireMockServer har startet")
+            .atMost(5, TimeUnit.SECONDS)
+            .until {
+                try {
+                    Socket("localhost", wireMockServer.port()).use { it.isConnected }
+                } catch (err: Exception) {
+                    false
+                }
+            }
+        val jwtIssuer = "jwtIssuer"
+        jwtStub = JwtStub(jwtIssuer, wireMockServer)
+        WireMock.stubFor(jwtStub.stubbedJwkProvider())
+        WireMock.stubFor(jwtStub.stubbedConfigProvider())
+        return jwtIssuer
     }
 
     @AfterAll
@@ -162,7 +173,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(22, feed.elementer.size)
+            assertEquals(23, feed.elementer.size)
         }
     }
 
@@ -234,6 +245,22 @@ internal class EndToEndTest {
                 assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
                 assertEquals(15, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("77ATRH3QENHB5K4XUY4LQ7HRTY", feed.elementer[0].innhold.utbetalingsreferanse)
+            }
+        }
+    }
+
+    @Test
+    fun annulleringV1() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=103&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+
+                assertEquals("SykepengerAnnullert_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2018, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2018, 2, 1), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
+                assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("3333JT3JYNB3VNT5CE5U54R3Y4", feed.elementer[0].innhold.utbetalingsreferanse)
             }
         }
     }
@@ -345,6 +372,27 @@ private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
       "opprettet": "2018-01-01T12:00:00",
       "system_read_count": 0
     }
+"""
+
+@Language("JSON")
+private val annullering = """{
+    "@event_name": "utbetaling_annullert",
+    "aktørId": "aktørId",
+    "fødselsnummer": "fnr",
+    "organisasjonsnummer": "999263550",
+    "fagsystemId": "3333JT3JYNB3VNT5CE5U54R3Y4",
+    "annullertAvSaksbehandler" : "2018-01-01T12:00:00",
+    "utbetalingslinjer": [
+        {
+            "fom": "2018-01-01",
+            "tom": "2018-02-01",
+            "beløp": 1000,
+            "grad": 100.0
+        }
+    ],
+    "@opprettet": "2018-01-01T12:00:00",
+    "system_read_count": 0
+}
 """
 
 @Language("JSON")

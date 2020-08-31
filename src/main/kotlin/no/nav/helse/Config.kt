@@ -21,14 +21,16 @@ fun setUpEnvironment() =
     Environment(
         kafkaBootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS"),
         jwksUrl = System.getenv("JWKS_URL"),
-        jwtIssuer = System.getenv("JWT_ISSUER")
+        jwtIssuer = System.getenv("JWT_ISSUER"),
+        enableAnnullering = System.getenv("NAIS_CLUSTER_NAME") == "dev-fss"
     )
 
 data class Environment(
     val jwksUrl: String,
     val jwtIssuer: String,
     val kafkaBootstrapServers: String,
-    val vedtaksfeedtopic: String = "privat-helse-vedtaksfeed-infotrygd"
+    val vedtaksfeedtopic: String = "privat-helse-vedtaksfeed-infotrygd",
+    val enableAnnullering: Boolean
 )
 
 data class ServiceUser(

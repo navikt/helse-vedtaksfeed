@@ -143,6 +143,55 @@ class UtbetaltRiverV3(
 
 }
 
+class AnnullertRiverV1(
+    rapidsConnection: RapidsConnection,
+    private val vedtakproducer: KafkaProducer<String, Vedtak>,
+    private val vedtaksfeedTopic: String
+) : River.PacketListener {
+
+    init {
+        River(rapidsConnection).apply {
+            validate {
+                it.requireValue("@event_name", "utbetaling_annullert")
+                it.require("@opprettet", JsonNode::asLocalDateTime)
+                it.requireKey(
+                    "fødselsnummer",
+                    "aktørId",
+                    "organisasjonsnummer",
+                    "fagsystemId"
+                )
+                it.requireArray("utbetalingslinjer") {
+                    require("fom", JsonNode::asLocalDate)
+                    require("tom", JsonNode::asLocalDate)
+                }
+            }
+        }.register(this)
+    }
+
+    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        try {
+            val fagsystemId = packet["fagsystemId"].textValue()
+            val utbetalingslinjer = packet["utbetalingslinjer"]
+            val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.min())
+            val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.max())
+            Vedtak(
+                type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
+                opprettet = packet["@opprettet"].asLocalDateTime(),
+                aktørId = packet["aktørId"].textValue(),
+                fødselsnummer = packet["fødselsnummer"].asText(),
+                førsteStønadsdag = fom,
+                sisteStønadsdag = tom,
+                førsteFraværsdag = fagsystemId,
+                forbrukteStønadsdager = 0
+            ).republish(vedtakproducer, vedtaksfeedTopic)
+        } catch (e: Exception) {
+            tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
+            throw e
+        }
+    }
+
+}
+
 private fun List<JsonNode>.stønadsdager(førsteFraværsdag: LocalDate): Pair<LocalDate, LocalDate> {
     if (size == 1) return first()["fom"].asLocalDate() to first()["tom"].asLocalDate()
     val førsteStønadsdag = map { it["fom"].asLocalDate() }.filter { it >= førsteFraværsdag }.min().requireNotNull()
