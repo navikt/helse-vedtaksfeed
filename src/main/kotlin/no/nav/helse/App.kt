@@ -9,13 +9,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.Application
 import io.ktor.application.install
-import io.ktor.auth.Authentication
-import io.ktor.auth.authenticate
-import io.ktor.auth.jwt.JWTPrincipal
-import io.ktor.auth.jwt.jwt
-import io.ktor.features.ContentNegotiation
-import io.ktor.jackson.jackson
-import io.ktor.routing.routing
+import io.ktor.auth.*
+import io.ktor.auth.jwt.*
+import io.ktor.features.*
+import io.ktor.jackson.*
+import io.ktor.routing.*
 import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -51,7 +49,7 @@ fun main() {
         UtbetaltRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         UtbetaltRiverV2(this, vedtakproducer, environment.vedtaksfeedtopic)
         UtbetaltRiverV3(this, vedtakproducer, environment.vedtaksfeedtopic)
-        if (environment.enableAnnullering) AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
+        AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         start()
     }
 }
