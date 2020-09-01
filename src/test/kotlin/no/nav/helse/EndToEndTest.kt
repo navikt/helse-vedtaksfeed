@@ -101,7 +101,8 @@ internal class EndToEndTest {
                     val testEnv = Environment(
                         kafkaBootstrapServers = "",
                         jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                        jwtIssuer = jwtIssuer
+                        jwtIssuer = jwtIssuer,
+                        enableAnnullering = true
                     )
                     vedtaksfeed(
                         testEnv,
