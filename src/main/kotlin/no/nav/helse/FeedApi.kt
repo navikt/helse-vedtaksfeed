@@ -1,8 +1,8 @@
 package no.nav.helse
 
-import io.ktor.response.respond
-import io.ktor.routing.Route
-import io.ktor.routing.get
+import io.ktor.response.*
+import io.ktor.routing.*
+import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -25,6 +25,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val feed = (records
             .takeUnless { records.count() == 1 && sisteLest == 0L && records.first().offset() == 0L }
             ?: ConsumerRecords.empty())
+            .filter { it.value().type == SykepengerUtbetalt_v1 }
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
