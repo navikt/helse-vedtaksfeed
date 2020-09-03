@@ -1,10 +1,9 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import io.ktor.http.HttpMethod
-import io.ktor.routing.routing
-import io.ktor.server.testing.handleRequest
-import io.ktor.server.testing.withTestApplication
+import io.ktor.http.*
+import io.ktor.routing.*
+import io.ktor.server.testing.*
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -14,6 +13,9 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.util.*
+import kotlin.collections.isNotEmpty
+import kotlin.collections.listOf
+import kotlin.collections.set
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -47,7 +49,7 @@ internal class FeedApiNulldagTest {
         withTestApplication({
             installJacksonFeature()
             routing {
-                feedApi(testTopic, consumer)
+                feedApi(testTopic, consumer, true)
             }
         }) {
             with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {

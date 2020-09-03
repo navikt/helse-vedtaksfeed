@@ -12,8 +12,11 @@ import no.nav.helse.rapids_rivers.inMemoryRapid
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.ServerSocket
@@ -172,7 +175,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(22, feed.elementer.size)
+            assertEquals(23, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -250,13 +253,12 @@ internal class EndToEndTest {
     }
 
     @Test
-    @Disabled("Kan gjeninnføres når Infotrygd klarer å lese inn annulleringer")
     fun annulleringV1() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=103&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
 
-                assertEquals("SykepengerAnnullert_v1", feed.elementer[0].type)
+                assertEquals("SykepengerAnnullert", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2018, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2018, 2, 1), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)

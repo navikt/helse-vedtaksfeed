@@ -2,6 +2,7 @@ package no.nav.helse
 
 import io.ktor.response.*
 import io.ktor.routing.*
+import no.nav.helse.Vedtak.Vedtakstype.SykepengerAnnullert_v1
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
@@ -9,7 +10,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import java.time.Duration
 
-internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
+internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>, enableAnnullering: Boolean) {
     val topicPartition = TopicPartition(topic, 0)
     consumer.assign(listOf(topicPartition))
 
@@ -25,7 +26,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val feed = (records
             .takeUnless { records.count() == 1 && sisteLest == 0L && records.first().offset() == 0L }
             ?: ConsumerRecords.empty())
-            .filter { it.value().type == SykepengerUtbetalt_v1 }
+            .filter { enableAnnullering || it.value().type == SykepengerUtbetalt_v1 }
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
@@ -44,7 +45,7 @@ private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
 private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
     this.value().let { vedtak ->
         Feed.Element(
-            type = vedtak.type.name,
+            type = toExternalName(vedtak.type),
             sekvensId = this.offset(),
             metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
             innhold = Feed.Element.Innhold(
@@ -56,3 +57,10 @@ private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             )
         )
     }
+
+/*
+Infotrygd har en lengdebegrensning på 21 tegn på type-feltet. For å slippe konflikter med data som allerede ligger på
+den interne topic-en beholder vi enum-verdien og tilpasser lengden bare på utgående data.
+ */
+fun toExternalName(type: Vedtak.Vedtakstype):String =
+    if (type == SykepengerAnnullert_v1) "SykepengerAnnullert" else type.name
