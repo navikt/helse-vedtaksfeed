@@ -13,8 +13,6 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.util.*
-import kotlin.collections.isNotEmpty
-import kotlin.collections.listOf
 import kotlin.collections.set
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -49,7 +47,7 @@ internal class FeedApiNulldagTest {
         withTestApplication({
             installJacksonFeature()
             routing {
-                feedApi(testTopic, consumer, true)
+                feedApi(testTopic, consumer)
             }
         }) {
             with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {

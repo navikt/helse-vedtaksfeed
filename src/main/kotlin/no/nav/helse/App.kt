@@ -49,7 +49,7 @@ fun main() {
         UtbetaltRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         UtbetaltRiverV2(this, vedtakproducer, environment.vedtaksfeedtopic)
         UtbetaltRiverV3(this, vedtakproducer, environment.vedtaksfeedtopic)
-        if (environment.enableAnnullering) AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
+        AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         start()
     }
 }
@@ -83,7 +83,7 @@ internal fun Application.vedtaksfeed(
 
     routing {
         authenticate {
-            feedApi(environment.vedtaksfeedtopic, vedtaksfeedconsumer, environment.enableAnnullering)
+            feedApi(environment.vedtaksfeedtopic, vedtaksfeedconsumer)
         }
     }
 }

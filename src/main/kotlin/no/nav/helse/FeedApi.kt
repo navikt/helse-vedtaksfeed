@@ -3,14 +3,13 @@ package no.nav.helse
 import io.ktor.response.*
 import io.ktor.routing.*
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerAnnullert_v1
-import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import java.time.Duration
 
-internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>, enableAnnullering: Boolean) {
+internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
     consumer.assign(listOf(topicPartition))
 
@@ -26,7 +25,6 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val feed = (records
             .takeUnless { records.count() == 1 && sisteLest == 0L && records.first().offset() == 0L }
             ?: ConsumerRecords.empty())
-            .filter { enableAnnullering || it.value().type == SykepengerUtbetalt_v1 }
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
