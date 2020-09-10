@@ -77,7 +77,9 @@ private fun seekToCheckpoint(environment: Environment, serviceUser: ServiceUser)
             log.info("Poll returnerte ingen elementer, venter...")
         }
         topicPartitions.forEach { (topicPartition, offset) ->
-            consumer.seek(topicPartition, offset)
+            consumer.seek(topicPartition, offset - 100)
+            log.info("Dummy poll returnerte ${consumer.poll(Duration.ofSeconds(1)).count()} records")
+            consumer.commitSync()
             log.info("Seeker frem til $offset for ${topicPartition.topic()}-${topicPartition.partition()}")
         }
     }

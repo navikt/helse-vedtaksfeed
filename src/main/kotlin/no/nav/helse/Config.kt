@@ -59,7 +59,7 @@ fun Properties.toConsumer() = Properties().also {
     it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-    it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+    it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1"
     it[ConsumerConfig.GROUP_ID_CONFIG] = System.getenv("KAFKA_CONSUMER_GROUP_ID")
 }
 
