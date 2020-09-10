@@ -17,11 +17,9 @@ import io.ktor.routing.*
 import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.common.TopicPartition
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -41,11 +39,6 @@ fun main() {
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
 
-    if (System.getenv("NAIS_CLUSTER_NAME") == "prod-fss") {
-        seekToCheckpoint(environment, serviceUser)
-        printProducerOffset(environment, serviceUser)
-    }
-
     val vedtakproducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
 
     RapidApplication.Builder(
@@ -58,42 +51,6 @@ fun main() {
         UtbetaltRiverV3(this, vedtakproducer, environment.vedtaksfeedtopic)
         AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         start()
-    }
-}
-
-private fun seekToCheckpoint(environment: Environment, serviceUser: ServiceUser) {
-    val rapidTopic = System.getenv("KAFKA_RAPID_TOPIC") ?: error("Kunne ikke finne kafka rapid topic")
-    val topicPartitions = mapOf(
-        TopicPartition(rapidTopic, 5) to 55471202L,
-        TopicPartition(rapidTopic, 3) to 55986254L,
-        TopicPartition(rapidTopic, 4) to 56135690L,
-        TopicPartition(rapidTopic, 2) to 56098871L,
-        TopicPartition(rapidTopic, 1) to 56354532L,
-        TopicPartition(rapidTopic, 0) to 85757832L
-    )
-    KafkaConsumer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toConsumer()).use { consumer ->
-        consumer.subscribe(listOf(rapidTopic))
-        while (consumer.poll(Duration.ofSeconds(1)).count() == 0) {
-            log.info("Poll returnerte ingen elementer, venter...")
-        }
-        topicPartitions.forEach { (topicPartition, offset) ->
-            consumer.seek(topicPartition, offset - 100)
-            log.info("Dummy poll returnerte ${consumer.poll(Duration.ofSeconds(1)).count()} records")
-            consumer.commitSync()
-            log.info("Seeker frem til $offset for ${topicPartition.topic()}-${topicPartition.partition()}")
-        }
-    }
-}
-
-private fun printProducerOffset(environment: Environment, serviceUser: ServiceUser) {
-    KafkaConsumer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toSeekingConsumer()).use { consumer ->
-        val partitions = consumer.partitionsFor(environment.vedtaksfeedtopic).map {
-            TopicPartition(environment.vedtaksfeedtopic, it.partition())
-        }
-        consumer.endOffsets(partitions)
-            .forEach { (partition, offset) ->
-                log.info("Current end offset for topic=${partition.topic()}, partition=${partition.partition()} is $offset")
-            }
     }
 }
 

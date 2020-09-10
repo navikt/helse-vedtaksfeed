@@ -2,7 +2,6 @@ package no.nav.helse
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.nio.file.Files
@@ -51,16 +50,6 @@ fun Properties.toSeekingConsumer() = Properties().also {
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
     it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
-}
-
-fun Properties.toConsumer() = Properties().also {
-    it.putAll(this)
-    it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
-    it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
-    it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-    it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-    it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1"
-    it[ConsumerConfig.GROUP_ID_CONFIG] = System.getenv("KAFKA_CONSUMER_GROUP_ID")
 }
 
 fun Properties.toProducerConfig(): Properties = Properties().also {
