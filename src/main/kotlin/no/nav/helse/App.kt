@@ -73,7 +73,9 @@ private fun seekToCheckpoint(environment: Environment, serviceUser: ServiceUser)
     )
     KafkaConsumer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toConsumer()).use { consumer ->
         consumer.subscribe(listOf(rapidTopic))
-        consumer.poll(Duration.ofSeconds(1))
+        while (consumer.poll(Duration.ofSeconds(1)).count() == 0) {
+            log.info("Poll returnerte ingen elementer, venter...")
+        }
         topicPartitions.forEach { (topicPartition, offset) ->
             consumer.seek(topicPartition, offset)
             log.info("Seeker frem til $offset for ${topicPartition.topic()}-${topicPartition.partition()}")
