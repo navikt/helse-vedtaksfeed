@@ -21,6 +21,7 @@ import org.apache.kafka.common.TopicPartition
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -72,6 +73,7 @@ private fun seekToCheckpoint(environment: Environment, serviceUser: ServiceUser)
     )
     KafkaConsumer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toConsumer()).use { consumer ->
         consumer.subscribe(listOf(rapidTopic))
+        consumer.poll(Duration.ofSeconds(1))
         topicPartitions.forEach { (topicPartition, offset) ->
             consumer.seek(topicPartition, offset)
             log.info("Seeker frem til $offset for ${topicPartition.topic()}-${topicPartition.partition()}")
