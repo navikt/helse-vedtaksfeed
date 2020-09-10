@@ -70,9 +70,10 @@ private fun seekToCheckpoint(environment: Environment, serviceUser: ServiceUser)
         TopicPartition(rapidTopic, 1) to 56354532L,
         TopicPartition(rapidTopic, 0) to 85757832L
     )
-    KafkaConsumer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toProducerConfig()).use { producer ->
+    KafkaConsumer<ByteArray, ByteArray>(loadBaseConfig(environment, serviceUser).toConsumer()).use { producer ->
         topicPartitions.forEach { (topicPartition, offset) ->
             producer.seek(topicPartition, offset)
+            log.info("Seeker frem til $offset for ${topicPartition.topic()}-${topicPartition.partition()}")
         }
     }
 }
