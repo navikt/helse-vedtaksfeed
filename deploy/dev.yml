@@ -45,7 +45,7 @@ spec:
     - name: KAFKA_RAPID_TOPIC
       value: helse-rapid-v1
     - name: KAFKA_RESET_POLICY
-      value: earliest
+      value: none
     - name: JWKS_URL
       value: http://security-token-service.default.svc.nais.local/rest/v1/sts/jwks
     - name: JWT_ISSUER
