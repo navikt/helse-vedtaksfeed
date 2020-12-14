@@ -143,6 +143,64 @@ class UtbetaltRiverV3(
 
 }
 
+class UtbetalingUtbetaltRiver(
+    rapidsConnection: RapidsConnection,
+    private val vedtakproducer: KafkaProducer<String, Vedtak>,
+    private val vedtaksfeedTopic: String
+) : River.PacketListener {
+
+    init {
+        River(rapidsConnection).apply {
+            validate {
+                it.demandValue("@event_name", "utbetaling_utbetalt")
+                it.demandValue("type", "UTBETALING")
+                it.require("tidspunkt", JsonNode::asLocalDateTime)
+                it.requireKey(
+                    "fødselsnummer",
+                    "aktørId",
+                    "organisasjonsnummer",
+                    "forbrukteSykedager",
+                    "arbeidsgiverOppdrag",
+                    "arbeidsgiverOppdrag.fagsystemId",
+                    "arbeidsgiverOppdrag.fom",
+                    "arbeidsgiverOppdrag.tom"
+                )
+            }
+        }.register(this)
+    }
+
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        println(problems.toExtendedReport())
+    }
+
+
+    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        try {
+            packet["arbeidsgiverOppdrag"]
+                .let { oppdrag ->
+                    Vedtak(
+                        type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
+                        opprettet = packet["tidspunkt"].asLocalDateTime(),
+                        aktørId = packet["aktørId"].textValue(),
+                        fødselsnummer = packet["fødselsnummer"].asText(),
+                        førsteStønadsdag = oppdrag["fom"].asLocalDate(),
+                        sisteStønadsdag = oppdrag["tom"].asLocalDate(),
+                        førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
+                        forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
+                    ).republish(vedtakproducer, vedtaksfeedTopic)
+                }
+        } catch (e: Exception) {
+            tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
+            throw e
+        }
+    }
+
+    /*override fun onSevere(error: MessageProblems.MessageException, context: RapidsConnection.MessageContext) {
+        println(error.message)
+    }*/
+
+}
+
 class AnnullertRiverV1(
     rapidsConnection: RapidsConnection,
     private val vedtakproducer: KafkaProducer<String, Vedtak>,

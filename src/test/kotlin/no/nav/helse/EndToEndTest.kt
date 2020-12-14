@@ -61,6 +61,7 @@ internal class EndToEndTest {
             UtbetaltRiverV1(this, internVedtakProducer, internTopic)
             UtbetaltRiverV2(this, internVedtakProducer, internTopic)
             UtbetaltRiverV3(this, internVedtakProducer, internTopic)
+            UtbetalingUtbetaltRiver(this, internVedtakProducer, internTopic)
             AnnullertRiverV1(this, internVedtakProducer, internTopic)
         }
 
@@ -92,6 +93,7 @@ internal class EndToEndTest {
             }
         )
         rapid.sendToListeners(annullering)
+        rapid.sendToListeners(utbetalingUtbetalt())
     }
 
     private fun lagHelseRapid(randomPort: Int, jwtIssuer: String): InMemoryRapid {
@@ -174,7 +176,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(23, feed.elementer.size)
+            assertEquals(24, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -263,6 +265,22 @@ internal class EndToEndTest {
                 assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
                 assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("3333JT3JYNB3VNT5CE5U54R3Y4", feed.elementer[0].innhold.utbetalingsreferanse)
+            }
+        }
+    }
+
+    @Test
+    fun utbetalingUtbetaltTest() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=104&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals(180, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
         }
     }
@@ -501,6 +519,69 @@ private fun vedtakV3(fom: LocalDate, tom: LocalDate, tidligereBrukteSykedager: I
         "id": "cf28fbba-562e-4841-b366-be1456fdccee",
         "opprettet": "2020-05-04T11:26:47.088455"
     }
+}
+"""
+
+@Language("JSON")
+private fun utbetalingUtbetalt() = """{
+  "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
+  "type": "UTBETALING",
+  "maksdato": "2021-03-17",
+  "forbrukteSykedager": 180,
+  "gjenståendeSykedager": 68,
+  "ident": "Automatisk behandlet",
+  "epost": "tbd@nav.no",
+  "tidspunkt": "2020-12-14T15:38:10.479991",
+  "automatiskBehandling": true,
+  "arbeidsgiverOppdrag": {
+    "mottaker": "999999999",
+    "fagområde": "SPREF",
+    "linjer": [
+      {
+        "fom": "2020-08-09",
+        "tom": "2020-08-24",
+        "dagsats": 1623,
+        "lønn": 2029,
+        "grad": 80.0,
+        "stønadsdager": 11,
+        "totalbeløp": 17853,
+        "endringskode": "UEND",
+        "delytelseId": 1,
+        "refDelytelseId": null,
+        "refFagsystemId": null,
+        "statuskode": null,
+        "datoStatusFom": null,
+        "klassekode": "SPREFAG-IOP"
+      }
+    ],
+    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
+    "endringskode": "ENDR",
+    "sisteArbeidsgiverdag": null,
+    "tidsstempel": "2020-12-14T15:36:32.932737",
+    "nettoBeløp": 15525,
+    "stønadsdager": 80,
+    "fom": "2020-08-09",
+    "tom": "2020-08-24"
+  },
+  "personOppdrag": {
+    "mottaker": "11111100000",
+    "fagområde": "SP",
+    "linjer": [],
+    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
+    "endringskode": "NY",
+    "sisteArbeidsgiverdag": null,
+    "tidsstempel": "2020-12-14T15:36:32.932944",
+    "nettoBeløp": 0,
+    "stønadsdager": 0,
+    "fom": "-999999999-01-01",
+    "tom": "-999999999-01-01"
+  },
+  "@event_name": "utbetaling_utbetalt",
+  "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
+  "@opprettet": "2020-12-14T15:38:14.419655",
+  "aktørId": "1111110000000",
+  "fødselsnummer": "11111100000",
+  "organisasjonsnummer": "999999999"
 }
 """
 
