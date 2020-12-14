@@ -58,43 +58,18 @@ internal class EndToEndTest {
         val rapid = lagHelseRapid(randomPort, jwtIssuer).apply {
             start()
             val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-            UtbetaltRiverV1(this, internVedtakProducer, internTopic)
-            UtbetaltRiverV2(this, internVedtakProducer, internTopic)
-            UtbetaltRiverV3(this, internVedtakProducer, internTopic)
+            UtbetalingUtbetaltRiver(this, internVedtakProducer, internTopic)
             AnnullertRiverV1(this, internVedtakProducer, internTopic)
         }
 
-        repeat(99) {
-            rapid.sendToListeners(
-                vedtakMedUtbetalingslinjernøkkel(
-                    LocalDate.of(2018, 1, 1).plusDays(it.toLong()),
-                    LocalDate.of(2018, 1, 1).plusDays(it.toLong())
-                )
-            )
+        repeat(100) {
+            rapid.sendToListeners(utbetalingUtbetalt())
         }
-        rapid.sendToListeners(
-            vedtakForQuickFix(LocalDate.of(2019, 1, 1), LocalDate.of(2019, 1, 31))
-        )
-        rapid.sendToListeners(
-            vedtakMedFlereLinjer(LocalDate.of(2019, 2, 1), LocalDate.of(2019, 2, 20))
-        )
-        rapid.sendToListeners(
-            vedtakMedUtbetalingnøkkel(LocalDate.of(2019, 3, 1), LocalDate.of(2019, 3, 31))
-        )
-        rapid.sendToListeners(vedtakV3(LocalDate.of(2019, 4, 1), LocalDate.of(2019, 4, 20), 40))
-        rapid.sendToListeners(
-            LocalDate.of(2019, 5, 1).let { førsteFom ->
-                vedtakV3MedFlereLinjer(
-                    førsteFom to førsteFom.plusDays(19),
-                    førsteFom.plusDays(20) to førsteFom.plusDays(30),
-                    60
-                )
-            }
-        )
         rapid.sendToListeners(annullering)
     }
 
     private fun lagHelseRapid(randomPort: Int, jwtIssuer: String): InMemoryRapid {
+
         return inMemoryRapid {
             ktor {
                 port(randomPort)
@@ -154,7 +129,7 @@ internal class EndToEndTest {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
-                assertEquals(123, feed.elementer.first().innhold.forbrukteStoenadsdager)
+                assertEquals(180, feed.elementer.first().innhold.forbrukteStoenadsdager)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
                 assertTrue(feed.inneholderFlereElementer)
             }
@@ -174,7 +149,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(23, feed.elementer.size)
+            assertEquals(19, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -195,66 +170,11 @@ internal class EndToEndTest {
         }
     }
 
-    @Test
-    fun `setter foersteStoenadsdag til første fom lik eller etter førsteFraværsdag`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(LocalDate.of(2019, 2, 1), feed.elementer.first().innhold.foersteStoenadsdag)
-            }
-        }
-    }
-
-    @Test
-    fun `takler alle meldingsformater`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=98&maxAntall=4".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-
-                assertEquals(LocalDate.of(2019, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 1, 31), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 2, 1), feed.elementer[1].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 2, 20), feed.elementer[1].innhold.sisteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 3, 1), feed.elementer[2].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 3, 31), feed.elementer[2].innhold.sisteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 4, 1), feed.elementer[3].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 4, 20), feed.elementer[3].innhold.sisteStoenadsdag)
-            }
-        }
-    }
-
-    @Test
-    fun `flere utbetalingslinjer slås sammen`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=102&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-
-                assertEquals(LocalDate.of(2019, 5, 1), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 5, 31), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals(23, feed.elementer[0].innhold.forbrukteStoenadsdager)
-            }
-        }
-    }
-
-    @Test
-    fun `sjekker innhold i vedtak fra utbetalingv3`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-
-                assertEquals(LocalDate.of(2019, 4, 1), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2019, 4, 20), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
-                assertEquals(15, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                assertEquals("77ATRH3QENHB5K4XUY4LQ7HRTY", feed.elementer[0].innhold.utbetalingsreferanse)
-            }
-        }
-    }
 
     @Test
     fun annulleringV1() {
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=103&maxAntall=1".httpGet {
+            "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
 
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
@@ -263,6 +183,22 @@ internal class EndToEndTest {
                 assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
                 assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("3333JT3JYNB3VNT5CE5U54R3Y4", feed.elementer[0].innhold.utbetalingsreferanse)
+            }
+        }
+    }
+
+    @Test
+    fun utbetalingUtbetaltTest() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=1&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals(180, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
         }
     }
@@ -323,60 +259,6 @@ internal class EndToEndTest {
 }
 
 @Language("JSON")
-private fun vedtakForQuickFix(fom: LocalDate, tom: LocalDate) = """
-    {
-      "@event_name": "utbetalt",
-      "aktørId": "aktørId",
-      "fødselsnummer": "fnr",
-      "førsteFraværsdag": "${fom.plusDays(1)}",
-      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
-      "utbetaling": [
-        {
-          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
-          "utbetalingslinjer": [
-            {
-              "fom": "$fom",
-              "tom": "$tom",
-              "dagsats": 1000,
-              "grad": 100.0
-            }
-          ]
-        }
-      ],
-      "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01T12:00:00",
-      "system_read_count": 0
-    }
-"""
-
-@Language("JSON")
-private fun vedtakMedUtbetalingnøkkel(fom: LocalDate, tom: LocalDate) = """
-    {
-      "@event_name": "utbetalt",
-      "aktørId": "aktørId",
-      "fødselsnummer": "fnr",
-      "førsteFraværsdag": "$fom",
-      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
-      "utbetaling": [
-        {
-          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
-          "utbetalingslinjer": [
-            {
-              "fom": "$fom",
-              "tom": "$tom",
-              "dagsats": 1000,
-              "grad": 100.0
-            }
-          ]
-        }
-      ],
-      "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01T12:00:00",
-      "system_read_count": 0
-    }
-"""
-
-@Language("JSON")
 private val annullering = """{
     "@event_name": "utbetaling_annullert",
     "aktørId": "aktørId",
@@ -398,174 +280,65 @@ private val annullering = """{
 """
 
 @Language("JSON")
-private fun vedtakMedFlereLinjer(fom: LocalDate, tom: LocalDate) = """
-    {
-      "@event_name": "utbetalt",
-      "aktørId": "aktørId",
-      "fødselsnummer": "fnr",
-      "førsteFraværsdag": "$fom",
-      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
-      "utbetaling": [
-        {
-          "utbetalingsreferanse": "WKOZJT3JYNB3VNT5CE5U54R3Y4",
-          "utbetalingslinjer": [
-            {
-              "fom": "${fom.minusMonths(1)}",
-              "tom": "${tom.minusMonths(1)}",
-              "dagsats": 1000,
-              "grad": 100.0
-            }, {
-              "fom": "$fom",
-              "tom": "$tom",
-              "dagsats": 1000,
-              "grad": 100.0
-            }
-          ]
-        }
-      ],
-      "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01T12:00:00",
-      "system_read_count": 0
-    }
-"""
-
-@Language("JSON")
-private fun vedtakMedUtbetalingslinjernøkkel(fom: LocalDate, tom: LocalDate) = """
-    {
-      "@event_name": "utbetalt",
-      "aktørId": "aktørId",
-      "fødselsnummer": "fnr",
-      "førsteFraværsdag": "$fom",
-      "vedtaksperiodeId": "a91a95b2-1e7c-42c4-b584-2d58c728f5b5",
-      "utbetalingslinjer": [
-        {
-          "fom": "$fom",
-          "tom": "$tom",
-          "dagsats": 1000,
-          "grad": 100.0
-        }
-      ],
-      "forbrukteSykedager": 123,
-      "opprettet": "2018-01-01T12:00:00",
-      "system_read_count": 0
-    }
-"""
-
-@Language("JSON")
-private fun vedtakV3(fom: LocalDate, tom: LocalDate, tidligereBrukteSykedager: Int) = """{
-    "aktørId": "aktørId",
-    "fødselsnummer": "fnr",
-    "organisasjonsnummer": "orgnummer",
-    "hendelser": [
-        "7c1a1edb-60b9-4a1f-b976-ef39d4d5021c",
-        "798f60a1-6f6f-4d07-a036-1f89bd36baca",
-        "ee8bc585-e898-4f4c-8662-f2a9b394896e"
+private fun utbetalingUtbetalt() = """{
+  "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
+  "type": "UTBETALING",
+  "maksdato": "2021-03-17",
+  "forbrukteSykedager": 180,
+  "gjenståendeSykedager": 68,
+  "ident": "Automatisk behandlet",
+  "epost": "tbd@nav.no",
+  "tidspunkt": "2020-12-14T15:38:10.479991",
+  "automatiskBehandling": true,
+  "arbeidsgiverOppdrag": {
+    "mottaker": "999999999",
+    "fagområde": "SPREF",
+    "linjer": [
+      {
+        "fom": "2020-08-09",
+        "tom": "2020-08-24",
+        "dagsats": 1623,
+        "lønn": 2029,
+        "grad": 80.0,
+        "stønadsdager": 11,
+        "totalbeløp": 17853,
+        "endringskode": "UEND",
+        "delytelseId": 1,
+        "refDelytelseId": null,
+        "refFagsystemId": null,
+        "statuskode": null,
+        "datoStatusFom": null,
+        "klassekode": "SPREFAG-IOP"
+      }
     ],
-    "utbetalt": [
-        {
-            "mottaker": "orgnummer",
-            "fagområde": "SPREF",
-            "fagsystemId": "77ATRH3QENHB5K4XUY4LQ7HRTY",
-            "førsteSykepengedag": "",
-            "totalbeløp": 8586,
-            "utbetalingslinjer": [
-                {
-                    "fom": "$fom",
-                    "tom": "$tom",
-                    "dagsats": 1431,
-                    "beløp": 1431,
-                    "grad": 100.0,
-                    "sykedager": ${sykedager(fom, tom)}
-                }
-            ]
-        },
-        {
-            "mottaker": "fnr",
-            "fagområde": "SP",
-            "fagsystemId": "353OZWEIBBAYZPKU6WYKTC54SE",
-            "totalbeløp": 0,
-            "utbetalingslinjer": []
-        }
-    ],
-    "fom": "$fom",
-    "tom": "$tom",
-    "forbrukteSykedager": ${tidligereBrukteSykedager + sykedager(fom, tom)},
-    "gjenståendeSykedager": ${248 - tidligereBrukteSykedager - sykedager(fom, tom)},
-    "opprettet": "2020-05-04T11:26:30.23846",
-    "system_read_count": 0,
-    "@event_name": "utbetalt",
-    "@id": "e8eb9ffa-57b7-4fe0-b44c-471b2b306bb6",
-    "@opprettet": "2020-05-04T11:27:13.521398",
-    "@forårsaket_av": {
-        "event_name": "behov",
-        "id": "cf28fbba-562e-4841-b366-be1456fdccee",
-        "opprettet": "2020-05-04T11:26:47.088455"
-    }
-}
-"""
-
-@Language("JSON")
-private fun vedtakV3MedFlereLinjer(
-    førsteLine: Pair<LocalDate, LocalDate>,
-    andreLinje: Pair<LocalDate, LocalDate>,
-    tidligereBrukteSykedager: Int
-) = """{
-    "aktørId": "aktørId",
-    "fødselsnummer": "fnr",
-    "organisasjonsnummer": "orgnummer",
-    "hendelser": [
-        "7c1a1edb-60b9-4a1f-b976-ef39d4d5021c",
-        "798f60a1-6f6f-4d07-a036-1f89bd36baca",
-        "ee8bc585-e898-4f4c-8662-f2a9b394896e"
-    ],
-    "utbetalt": [
-        {
-            "mottaker": "orgnummer",
-            "fagområde": "SPREF",
-            "fagsystemId": "77ATRH3QENHB5K4XUY4LQ7HRTY",
-            "førsteSykepengedag": "",
-            "totalbeløp": 8586,
-            "utbetalingslinjer": [
-                {
-                    "fom": "${førsteLine.first}",
-                    "tom": "${førsteLine.second}",
-                    "dagsats": 1431,
-                    "beløp": 1431,
-                    "grad": 100.0,
-                    "sykedager": ${sykedager(førsteLine.first, førsteLine.second)}
-                },
-                {
-                    "fom": "${andreLinje.first}",
-                    "tom": "${andreLinje.second}",
-                    "dagsats": 1431,
-                    "beløp": 1431,
-                    "grad": 100.0,
-                    "sykedager": ${sykedager(andreLinje.first, andreLinje.second)}
-                }
-            ]
-        },
-        {
-            "mottaker": "fnr",
-            "fagområde": "SP",
-            "fagsystemId": "353OZWEIBBAYZPKU6WYKTC54SE",
-            "totalbeløp": 0,
-            "utbetalingslinjer": []
-        }
-    ],
-    "fom": "${førsteLine.first}",
-    "tom": "${andreLinje.second}",
-    "forbrukteSykedager": ${tidligereBrukteSykedager + sykedager(førsteLine.first, andreLinje.second)},
-    "gjenståendeSykedager": ${248 - tidligereBrukteSykedager - sykedager(førsteLine.first, andreLinje.second)},
-    "opprettet": "2020-05-04T11:26:30.23846",
-    "system_read_count": 0,
-    "@event_name": "utbetalt",
-    "@id": "e8eb9ffa-57b7-4fe0-b44c-471b2b306bb6",
-    "@opprettet": "2020-05-04T11:27:13.521398",
-    "@forårsaket_av": {
-        "event_name": "behov",
-        "id": "cf28fbba-562e-4841-b366-be1456fdccee",
-        "opprettet": "2020-05-04T11:26:47.088455"
-    }
+    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
+    "endringskode": "ENDR",
+    "sisteArbeidsgiverdag": null,
+    "tidsstempel": "2020-12-14T15:36:32.932737",
+    "nettoBeløp": 15525,
+    "stønadsdager": 80,
+    "fom": "2020-08-09",
+    "tom": "2020-08-24"
+  },
+  "personOppdrag": {
+    "mottaker": "11111100000",
+    "fagområde": "SP",
+    "linjer": [],
+    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
+    "endringskode": "NY",
+    "sisteArbeidsgiverdag": null,
+    "tidsstempel": "2020-12-14T15:36:32.932944",
+    "nettoBeløp": 0,
+    "stønadsdager": 0,
+    "fom": "-999999999-01-01",
+    "tom": "-999999999-01-01"
+  },
+  "@event_name": "utbetaling_utbetalt",
+  "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
+  "@opprettet": "2020-12-14T15:38:14.419655",
+  "aktørId": "1111110000000",
+  "fødselsnummer": "11111100000",
+  "organisasjonsnummer": "999999999"
 }
 """
 

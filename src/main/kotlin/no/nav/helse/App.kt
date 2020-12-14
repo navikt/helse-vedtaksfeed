@@ -46,9 +46,7 @@ fun main() {
     ).withKtorModule {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
-        UtbetaltRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
-        UtbetaltRiverV2(this, vedtakproducer, environment.vedtaksfeedtopic)
-        UtbetaltRiverV3(this, vedtakproducer, environment.vedtaksfeedtopic)
+        UtbetalingUtbetaltRiver(this, vedtakproducer, environment.vedtaksfeedtopic)
         AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
         start()
     }
