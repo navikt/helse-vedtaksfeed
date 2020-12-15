@@ -6,9 +6,10 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.ktor.http.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 import no.nav.common.KafkaEnvironment
-import no.nav.helse.rapids_rivers.InMemoryRapid
-import no.nav.helse.rapids_rivers.inMemoryRapid
+import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
@@ -22,95 +23,14 @@ import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URL
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.streams.asSequence
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class EndToEndTest {
-
-    private lateinit var appBaseUrl: String
-    private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
-    private lateinit var jwtStub: JwtStub
-
-    private val internTopic = "privat-helse-vedtaksfeed-infotrygd"
-    private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
-    private val embeddedKafkaEnvironment = KafkaEnvironment(
-        autoStart = false,
-        noOfBrokers = 1,
-        topicInfos = topicInfos,
-        withSchemaRegistry = false,
-        withSecurity = false
-    )
-
-    @BeforeAll
-    fun setup() {
-        embeddedKafkaEnvironment.start()
-        val jwtIssuer = mockAuthentication()
-
-        val randomPort = ServerSocket(0).use { it.localPort }
-        appBaseUrl = "http://localhost:$randomPort"
-
-        val rapid = lagHelseRapid(randomPort, jwtIssuer).apply {
-            start()
-            val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-            UtbetalingUtbetaltRiver(this, internVedtakProducer, internTopic)
-            AnnullertRiverV1(this, internVedtakProducer, internTopic)
-        }
-
-        repeat(100) {
-            rapid.sendToListeners(utbetalingUtbetalt())
-        }
-        rapid.sendToListeners(annullering)
-    }
-
-    private fun lagHelseRapid(randomPort: Int, jwtIssuer: String): InMemoryRapid {
-
-        return inMemoryRapid {
-            ktor {
-                port(randomPort)
-                module {
-                    val testEnv = Environment(
-                        kafkaBootstrapServers = "",
-                        jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                        jwtIssuer = jwtIssuer
-                    )
-                    vedtaksfeed(
-                        testEnv,
-                        JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
-                        loadTestConfig().toProducerConfig()
-                    )
-                }
-            }
-        }
-    }
-
-    private fun mockAuthentication(): String {
-        wireMockServer.start()
-        await("vent på WireMockServer har startet")
-            .atMost(5, TimeUnit.SECONDS)
-            .until {
-                try {
-                    Socket("localhost", wireMockServer.port()).use { it.isConnected }
-                } catch (err: Exception) {
-                    false
-                }
-            }
-        val jwtIssuer = "jwtIssuer"
-        jwtStub = JwtStub(jwtIssuer, wireMockServer)
-        WireMock.stubFor(jwtStub.stubbedJwkProvider())
-        WireMock.stubFor(jwtStub.stubbedConfigProvider())
-        return jwtIssuer
-    }
-
-    @AfterAll
-    fun tearDown() {
-        embeddedKafkaEnvironment.close()
-    }
 
     @Test
     fun `får tilbake elementer fra feed`() {
@@ -203,13 +123,6 @@ internal class EndToEndTest {
         }
     }
 
-    private fun loadTestConfig(): Properties = Properties().also {
-        it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
-        it.remove("security.protocol")
-        it.remove("sasl.mechanism")
-        it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
-    }
-
     private fun String.httpGet(
         expectedStatus: HttpStatusCode = HttpStatusCode.OK,
         testBlock: String.() -> Unit = {}
@@ -256,6 +169,91 @@ internal class EndToEndTest {
             return stream?.use { it.bufferedReader().readText() } ?: ""
         }
 
+    private lateinit var appBaseUrl: String
+    private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
+    private lateinit var jwtStub: JwtStub
+
+    private val randomPort = ServerSocket(0).use { it.localPort }
+    private val jwtIssuer = mockAuthentication()
+
+    private val ktor: ApplicationEngine = setupKtor()
+
+    private val internTopic = "privat-helse-vedtaksfeed-infotrygd"
+    private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
+    private val embeddedKafkaEnvironment = KafkaEnvironment(
+        autoStart = false,
+        noOfBrokers = 1,
+        topicInfos = topicInfos,
+        withSchemaRegistry = false,
+        withSecurity = false
+    )
+
+    private fun setupKtor() = embeddedServer(Netty, applicationEngineEnvironment {
+        connector {
+            port = randomPort
+        }
+        module {
+            val testEnv = Environment(
+                kafkaBootstrapServers = "",
+                jwksUrl = "${wireMockServer.baseUrl()}/jwks",
+                jwtIssuer = jwtIssuer
+            )
+            vedtaksfeed(
+                testEnv,
+                JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
+                loadTestConfig().toProducerConfig()
+            )
+        }
+    })
+
+    private fun mockAuthentication(): String {
+        wireMockServer.start()
+        await("vent på WireMockServer har startet")
+            .atMost(5, TimeUnit.SECONDS)
+            .until {
+                try {
+                    Socket("localhost", wireMockServer.port()).use { it.isConnected }
+                } catch (err: Exception) {
+                    false
+                }
+            }
+        val jwtIssuer = "jwtIssuer"
+        jwtStub = JwtStub(jwtIssuer, wireMockServer)
+        WireMock.stubFor(jwtStub.stubbedJwkProvider())
+        WireMock.stubFor(jwtStub.stubbedConfigProvider())
+        return jwtIssuer
+    }
+
+    private fun loadTestConfig(): Properties = Properties().also {
+        it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
+        it.remove("security.protocol")
+        it.remove("sasl.mechanism")
+        it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
+    }
+
+    @BeforeAll
+    fun setup() {
+        embeddedKafkaEnvironment.start()
+        appBaseUrl = "http://localhost:$randomPort"
+
+        val rapid = TestRapid().apply {
+            val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
+            UtbetalingUtbetaltRiver(this, internVedtakProducer, internTopic)
+            AnnullertRiverV1(this, internVedtakProducer, internTopic)
+        }
+
+        ktor.start(false)
+        repeat(100) {
+            rapid.sendTestMessage(utbetalingUtbetalt())
+        }
+        rapid.sendTestMessage(annullering)
+    }
+
+    @AfterAll
+    fun tearDown() {
+        embeddedKafkaEnvironment.close()
+        ktor.stop(5000, 5000)
+    }
 }
 
 @Language("JSON")
@@ -341,7 +339,3 @@ private fun utbetalingUtbetalt() = """{
   "organisasjonsnummer": "999999999"
 }
 """
-
-private fun sykedager(fom: LocalDate, tom: LocalDate) =
-    fom.datesUntil(tom.plusDays(1)).asSequence()
-        .filter { it.dayOfWeek !in arrayOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) }.count()
