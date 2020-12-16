@@ -24,11 +24,11 @@ class UtbetalingUtbetaltRiver(
                     "fødselsnummer",
                     "aktørId",
                     "organisasjonsnummer",
-                    "forbrukteSykedager",
                     "arbeidsgiverOppdrag",
                     "arbeidsgiverOppdrag.fagsystemId",
                     "arbeidsgiverOppdrag.fom",
-                    "arbeidsgiverOppdrag.tom"
+                    "arbeidsgiverOppdrag.tom",
+                    "arbeidsgiverOppdrag.stønadsdager"
                 )
             }
         }.register(this)
@@ -51,7 +51,7 @@ class UtbetalingUtbetaltRiver(
                         førsteStønadsdag = oppdrag["fom"].asLocalDate(),
                         sisteStønadsdag = oppdrag["tom"].asLocalDate(),
                         førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
-                        forbrukteStønadsdager = packet["forbrukteSykedager"].intValue()
+                        forbrukteStønadsdager = oppdrag["stønadsdager"].intValue()
                     ).republish(vedtakproducer, vedtaksfeedTopic)
                 }
         } catch (e: Exception) {

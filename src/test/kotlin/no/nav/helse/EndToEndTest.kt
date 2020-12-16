@@ -49,7 +49,7 @@ internal class EndToEndTest {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
-                assertEquals(180, feed.elementer.first().innhold.forbrukteStoenadsdager)
+                assertEquals(80, feed.elementer.first().innhold.forbrukteStoenadsdager)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
                 assertTrue(feed.inneholderFlereElementer)
             }
@@ -116,7 +116,7 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
-                assertEquals(180, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
