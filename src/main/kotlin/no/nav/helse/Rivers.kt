@@ -34,11 +34,6 @@ class UtbetalingUtbetaltRiver(
         }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-        println(problems.toExtendedReport())
-    }
-
-
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
         try {
             packet["arbeidsgiverOppdrag"]
