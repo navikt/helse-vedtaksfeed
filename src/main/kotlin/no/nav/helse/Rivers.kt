@@ -34,7 +34,7 @@ class UtbetalingUtbetaltRiver(
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             packet["arbeidsgiverOppdrag"]
                 .let { oppdrag ->
@@ -81,12 +81,12 @@ class AnnullertRiverV1(
         }.register(this)
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             val fagsystemId = packet["fagsystemId"].textValue()
             val utbetalingslinjer = packet["utbetalingslinjer"]
-            val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.min())
-            val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.max())
+            val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.minOrNull())
+            val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.maxOrNull())
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),

@@ -14,7 +14,7 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -26,8 +26,6 @@ import java.net.URL
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class EndToEndTest {
