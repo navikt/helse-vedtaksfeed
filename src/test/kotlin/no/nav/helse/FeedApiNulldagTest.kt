@@ -79,9 +79,6 @@ internal class FeedApiNulldagTest {
     }
 
     private fun loadTestConfig(): Properties = Properties().also {
-        it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
-        it.remove("security.protocol")
-        it.remove("sasl.mechanism")
         it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
     }
 }

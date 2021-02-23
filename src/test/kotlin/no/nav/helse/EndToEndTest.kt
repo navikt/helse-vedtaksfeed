@@ -194,7 +194,9 @@ internal class EndToEndTest {
             val testEnv = Environment(
                 kafkaBootstrapServers = "",
                 jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                jwtIssuer = jwtIssuer
+                jwtIssuer = jwtIssuer,
+                truststorePassword = null,
+                truststorePath = null
             )
             vedtaksfeed(
                 testEnv,
@@ -223,9 +225,6 @@ internal class EndToEndTest {
     }
 
     private fun loadTestConfig(): Properties = Properties().also {
-        it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
-        it.remove("security.protocol")
-        it.remove("sasl.mechanism")
         it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
     }
 
