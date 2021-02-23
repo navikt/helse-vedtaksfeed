@@ -40,17 +40,11 @@ dependencies {
     }
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_15
-    targetCompatibility = JavaVersion.VERSION_15
-}
-
 tasks {
-    withType<KotlinCompile> {
+    compileKotlin {
         kotlinOptions.jvmTarget = "15"
     }
-
-    named<KotlinCompile>("compileTestKotlin") {
+    compileTestKotlin {
         kotlinOptions.jvmTarget = "15"
     }
 
