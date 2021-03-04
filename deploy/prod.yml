@@ -46,8 +46,8 @@ spec:
       value: tbd-vedtaksfeed-v1
     - name: KAFKA_RAPID_TOPIC
       value: tbd.rapid.v1
-    #- name: KAFKA_RESET_POLICY
-    #  value: none
+    - name: KAFKA_RESET_POLICY
+      value: none
     - name: JWKS_URL
       value: http://security-token-service.default.svc.nais.local/rest/v1/sts/jwks
     - name: JWT_ISSUER
