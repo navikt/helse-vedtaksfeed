@@ -67,7 +67,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(19, feed.elementer.size)
+            assertEquals(20, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -115,6 +115,22 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
+            }
+        }
+    }
+
+    @Test
+    fun `utbetaling utbetalt med et hint av revurdering`() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals(79, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
@@ -244,6 +260,7 @@ internal class EndToEndTest {
             rapid.sendTestMessage(utbetalingUtbetalt())
         }
         rapid.sendTestMessage(annullering)
+        rapid.sendTestMessage(utbetalingUtbetalt("REVURDERING", stønadsdager = 79))
     }
 
     @AfterAll
@@ -275,9 +292,9 @@ private val annullering = """{
 """
 
 @Language("JSON")
-private fun utbetalingUtbetalt() = """{
+private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsdager: Int = 80) = """{
   "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
-  "type": "UTBETALING",
+  "type": "$utbetalingtype",
   "maksdato": "2021-03-17",
   "forbrukteSykedager": 180,
   "gjenståendeSykedager": 68,
@@ -311,7 +328,7 @@ private fun utbetalingUtbetalt() = """{
     "sisteArbeidsgiverdag": null,
     "tidsstempel": "2020-12-14T15:36:32.932737",
     "nettoBeløp": 15525,
-    "stønadsdager": 80,
+    "stønadsdager": $stønadsdager,
     "fom": "2020-08-09",
     "tom": "2020-08-24"
   },

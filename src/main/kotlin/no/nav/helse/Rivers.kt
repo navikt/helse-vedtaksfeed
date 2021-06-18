@@ -18,7 +18,7 @@ class UtbetalingUtbetaltRiver(
         River(rapidsConnection).apply {
             validate {
                 it.demandValue("@event_name", "utbetaling_utbetalt")
-                it.demandValue("type", "UTBETALING")
+                it.requireAny("type", listOf("UTBETALING", "REVURDERING"))
                 it.require("tidspunkt", JsonNode::asLocalDateTime)
                 it.requireKey(
                     "fødselsnummer",
