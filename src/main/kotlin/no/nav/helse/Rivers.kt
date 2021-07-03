@@ -48,6 +48,7 @@ class UtbetalingUtbetaltRiver(
                         førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
                         forbrukteStønadsdager = oppdrag["stønadsdager"].intValue()
                     ).republish(vedtakproducer, vedtaksfeedTopic)
+                        .also { log.info("Republiserer vedtak på intern topic med offset ${it.offset()}") }
                 }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
@@ -97,18 +98,13 @@ class AnnullertRiverV1(
                 førsteFraværsdag = fagsystemId,
                 forbrukteStønadsdager = 0
             ).republish(vedtakproducer, vedtaksfeedTopic)
+                .also { log.info("Republiserer annullering på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
         }
     }
-
 }
 
-private fun Vedtak.republish(
-    vedtakproducer: KafkaProducer<String, Vedtak>,
-    vedtaksfeedtopic: String
-) {
+private fun Vedtak.republish(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) =
     vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this)).get()
-        .also { log.info("Republiserer vedtak på intern topic med offset ${it.offset()}") }
-}
