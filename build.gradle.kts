@@ -1,6 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
-val junitJupiterVersion = "5.6.2"
+val junitJupiterVersion = "5.6.3"
 val ktorVersion = "1.5.0"
 val rapidsAndRiversVersion = "1.5e3ca6a"
 val wireMockVersion = "2.27.1"
@@ -14,7 +12,7 @@ group = "no.nav.helse"
 repositories {
     jcenter()
     maven("https://jitpack.io")
-    maven("http://packages.confluent.io/maven/")
+    maven("https://packages.confluent.io/maven/")
 }
 
 dependencies {
