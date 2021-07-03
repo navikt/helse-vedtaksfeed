@@ -24,6 +24,7 @@ class UtbetalingUtbetaltRiver(
                     "fødselsnummer",
                     "aktørId",
                     "organisasjonsnummer",
+                    "utbetalingId",
                     "arbeidsgiverOppdrag",
                     "arbeidsgiverOppdrag.fagsystemId",
                     "arbeidsgiverOppdrag.fom",
@@ -36,6 +37,7 @@ class UtbetalingUtbetaltRiver(
 
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
+            val utbetalingId = packet["utbetalingId"].asText()
             packet["arbeidsgiverOppdrag"]
                 .let { oppdrag ->
                     Vedtak(
@@ -48,7 +50,7 @@ class UtbetalingUtbetaltRiver(
                         førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
                         forbrukteStønadsdager = oppdrag["stønadsdager"].intValue()
                     ).republish(vedtakproducer, vedtaksfeedTopic)
-                        .also { log.info("Republiserer vedtak på intern topic med offset ${it.offset()}") }
+                        .also { log.info("Republiserer vedtak for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }
                 }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
@@ -72,6 +74,7 @@ class AnnullertRiverV1(
                     "fødselsnummer",
                     "aktørId",
                     "organisasjonsnummer",
+                    "utbetalingId",
                     "fagsystemId"
                 )
                 it.requireArray("utbetalingslinjer") {
@@ -88,6 +91,7 @@ class AnnullertRiverV1(
             val utbetalingslinjer = packet["utbetalingslinjer"]
             val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.minOrNull())
             val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.maxOrNull())
+            val utbetalingId = packet["utbetalingId"].asText()
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),
@@ -98,7 +102,7 @@ class AnnullertRiverV1(
                 førsteFraværsdag = fagsystemId,
                 forbrukteStønadsdager = 0
             ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer annullering på intern topic med offset ${it.offset()}") }
+                .also { log.info("Republiserer annullering for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
