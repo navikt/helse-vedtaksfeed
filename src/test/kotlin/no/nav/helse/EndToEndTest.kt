@@ -13,11 +13,8 @@ import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.ServerSocket
@@ -67,7 +64,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(20, feed.elementer.size)
+            assertEquals(21, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -133,6 +130,23 @@ internal class EndToEndTest {
                 assertEquals(79, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
+            }
+        }
+    }
+
+    @Test
+    @Disabled
+    fun `les ut utbetaling til bruker`(){
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2021, 8, 17), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2021, 8, 31), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
+                assertEquals(11, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("DGPPPJYCVZAGPKBWIEEDMCTBRY", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(LocalDate.of(2021, 11, 11), feed.elementer[0].metadata.opprettetDato)
             }
         }
     }
@@ -261,6 +275,7 @@ internal class EndToEndTest {
         }
         rapid.sendTestMessage(annullering)
         rapid.sendTestMessage(utbetalingUtbetalt("REVURDERING", stønadsdager = 79))
+        rapid.sendTestMessage(utbetalingTilBruker())
     }
 
     @AfterAll
@@ -353,4 +368,248 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
   "fødselsnummer": "11111100000",
   "organisasjonsnummer": "999999999"
 }
+"""
+
+@Language("JSON")
+private fun utbetalingTilBruker() = """
+    {
+      "utbetalingId": "96e819b7-7dc8-4125-8a5d-b5b6d7f5bc5f",
+      "type": "UTBETALING",
+      "fom": "2021-08-17",
+      "tom": "2021-08-31",
+      "maksdato": "2022-07-28",
+      "forbrukteSykedager": 11,
+      "gjenståendeSykedager": 237,
+      "ident": "N143409",
+      "epost": "Knut.Nygaard@nav.no",
+      "tidspunkt": "2021-11-11T10:56:08.464312658",
+      "automatiskBehandling": false,
+      "arbeidsgiverOppdrag": {
+        "mottaker": "972674818",
+        "fagområde": "SPREF",
+        "linjer": [],
+        "fagsystemId": "WHQQO7GYFZBMPBVJU7H2B2BWTA",
+        "endringskode": "NY",
+        "sisteArbeidsgiverdag": "2021-08-16",
+        "tidsstempel": "2021-11-11T10:54:26.188206606",
+        "nettoBeløp": 0,
+        "stønadsdager": 0,
+        "fom": "-999999999-01-01",
+        "tom": "-999999999-01-01"
+      },
+      "personOppdrag": {
+        "mottaker": "09047606370",
+        "fagområde": "SP",
+        "linjer": [
+          {
+            "fom": "2021-08-17",
+            "tom": "2021-08-31",
+            "satstype": "DAG",
+            "sats": 1622,
+            "dagsats": 1622,
+            "lønn": 1622,
+            "grad": 100.0,
+            "stønadsdager": 11,
+            "totalbeløp": 17842,
+            "endringskode": "NY",
+            "delytelseId": 1,
+            "refDelytelseId": null,
+            "refFagsystemId": null,
+            "statuskode": null,
+            "datoStatusFom": null,
+            "klassekode": "SPATORD"
+          }
+        ],
+        "fagsystemId": "DGPPPJYCVZAGPKBWIEEDMCTBRY",
+        "endringskode": "NY",
+        "sisteArbeidsgiverdag": "2021-08-16",
+        "tidsstempel": "2021-11-11T10:54:26.188929001",
+        "nettoBeløp": 17842,
+        "stønadsdager": 11,
+        "fom": "2021-08-17",
+        "tom": "2021-08-31"
+      },
+      "utbetalingsdager": [
+        {
+          "dato": "2021-08-01",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-02",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-03",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-04",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-05",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-06",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-07",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-08",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-09",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-10",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-11",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-12",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-13",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-14",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-15",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-16",
+          "type": "ArbeidsgiverperiodeDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-17",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-18",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-19",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-20",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-21",
+          "type": "NavHelgDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-22",
+          "type": "NavHelgDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-23",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-24",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-25",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-26",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-27",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-28",
+          "type": "NavHelgDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-29",
+          "type": "NavHelgDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-30",
+          "type": "NavDag",
+          "begrunnelser": null
+        },
+        {
+          "dato": "2021-08-31",
+          "type": "NavDag",
+          "begrunnelser": null
+        }
+      ],
+      "vedtaksperiodeIder": [
+        "d9961c58-8f1d-4f9f-be53-763eaf609061"
+      ],
+      "system_read_count": 0,
+      "system_participating_services": [
+        {
+          "service": "spleis",
+          "instance": "spleis-5c84499f54-6sncs",
+          "time": "2021-11-11T10:56:09.745848961"
+        }
+      ],
+      "@event_name": "utbetaling_utbetalt",
+      "@id": "25f8a9a0-3034-457d-9976-6e2575970c1f",
+      "@opprettet": "2021-11-11T10:56:09.746062805",
+      "@forårsaket_av": {
+        "behov": [
+          "Utbetaling"
+        ],
+        "event_name": "behov",
+        "id": "2271a8c9-4a0e-40cb-86fd-53eb4b1e827b",
+        "opprettet": "2021-11-11T10:56:08.888119238"
+      },
+      "fødselsnummer": "09047606370",
+      "aktørId": "2336848909974",
+      "organisasjonsnummer": "972674818"
+    }
 """
