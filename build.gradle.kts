@@ -4,13 +4,13 @@ val rapidsAndRiversVersion = "1.5e3ca6a"
 val wireMockVersion = "2.27.1"
 
 plugins {
-    kotlin("jvm") version "1.4.30"
+    kotlin("jvm") version "1.5.21"
 }
 
 group = "no.nav.helse"
 
 repositories {
-    jcenter()
+    mavenCentral()
     maven("https://jitpack.io")
     maven("https://packages.confluent.io/maven/")
 }
@@ -18,6 +18,7 @@ repositories {
 dependencies {
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-jackson:$ktorVersion")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
@@ -40,10 +41,10 @@ dependencies {
 
 tasks {
     compileKotlin {
-        kotlinOptions.jvmTarget = "15"
+        kotlinOptions.jvmTarget = "16"
     }
     compileTestKotlin {
-        kotlinOptions.jvmTarget = "15"
+        kotlinOptions.jvmTarget = "16"
     }
 
     withType<Jar> {
