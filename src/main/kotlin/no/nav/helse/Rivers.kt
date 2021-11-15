@@ -35,6 +35,11 @@ class UtbetalingUtbetaltRiver(
         }.register(this)
     }
 
+    override fun onError(problems: MessageProblems, context: MessageContext) {
+        tjenestekallLog.error("Forstod ikke innkommende melding (utbetaling_utbetalt): ${problems.toExtendedReport()}")
+        log.error("Forstod ikke innkommende melding (utbetaling_utbetalt): $problems")
+    }
+
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             val utbetalingId = packet["utbetalingId"].asText()
