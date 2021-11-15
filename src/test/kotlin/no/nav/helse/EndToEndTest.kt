@@ -135,7 +135,6 @@ internal class EndToEndTest {
     }
 
     @Test
-    @Disabled
     fun `les ut utbetaling til bruker`(){
         await().atMost(5, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
@@ -145,7 +144,8 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2021, 8, 31), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(11, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                assertEquals("DGPPPJYCVZAGPKBWIEEDMCTBRY", feed.elementer[0].innhold.utbetalingsreferanse)
+                // I påvente av at utbetalingen har sin egen "fagsystenId" bruker vi den fra arbeidsgiveroppdraget
+                assertEquals("WHQQO7GYFZBMPBVJU7H2B2BWTA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2021, 11, 11), feed.elementer[0].metadata.opprettetDato)
             }
         }
@@ -311,8 +311,11 @@ private val annullering = """{
 private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsdager: Int = 80) = """{
   "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
   "type": "$utbetalingtype",
+  "fom": "2020-08-09",
+  "tom": "2020-08-24",
   "maksdato": "2021-03-17",
-  "forbrukteSykedager": 180,
+  "forbrukteSykedager": 80,
+  "stønadsdager": $stønadsdager,
   "gjenståendeSykedager": 68,
   "ident": "Automatisk behandlet",
   "epost": "tbd@nav.no",
@@ -380,6 +383,7 @@ private fun utbetalingTilBruker() = """
       "maksdato": "2022-07-28",
       "forbrukteSykedager": 11,
       "gjenståendeSykedager": 237,
+      "stønadsdager": 11,
       "ident": "N143409",
       "epost": "Knut.Nygaard@nav.no",
       "tidspunkt": "2021-11-11T10:56:08.464312658",

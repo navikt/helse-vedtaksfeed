@@ -25,11 +25,11 @@ class UtbetalingUtbetaltRiver(
                     "aktørId",
                     "organisasjonsnummer",
                     "utbetalingId",
+                    "fom",
+                    "tom",
+                    "stønadsdager",
                     "arbeidsgiverOppdrag",
                     "arbeidsgiverOppdrag.fagsystemId",
-                    "arbeidsgiverOppdrag.fom",
-                    "arbeidsgiverOppdrag.tom",
-                    "arbeidsgiverOppdrag.stønadsdager"
                 )
             }
         }.register(this)
@@ -45,10 +45,11 @@ class UtbetalingUtbetaltRiver(
                         opprettet = packet["tidspunkt"].asLocalDateTime(),
                         aktørId = packet["aktørId"].textValue(),
                         fødselsnummer = packet["fødselsnummer"].asText(),
-                        førsteStønadsdag = oppdrag["fom"].asLocalDate(),
-                        sisteStønadsdag = oppdrag["tom"].asLocalDate(),
+                        førsteStønadsdag = packet["fom"].asLocalDate(),
+                        sisteStønadsdag = packet["tom"].asLocalDate(),
+                        // I påvente av at utbetalingen har sin egen "fagsystenId" bruker vi den fra arbeidsgiveroppdraget
                         førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
-                        forbrukteStønadsdager = oppdrag["stønadsdager"].intValue()
+                        forbrukteStønadsdager = packet["stønadsdager"].intValue()
                     ).republish(vedtakproducer, vedtaksfeedTopic)
                         .also { log.info("Republiserer vedtak for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }
                 }
