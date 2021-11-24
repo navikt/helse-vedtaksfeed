@@ -81,22 +81,19 @@ class AnnullertRiverV1(
                     "aktørId",
                     "organisasjonsnummer",
                     "utbetalingId",
-                    "fagsystemId"
+                    "arbeidsgiverFagsystemId",
+                    "fom",
+                    "tom"
                 )
-                it.requireArray("utbetalingslinjer") {
-                    require("fom", JsonNode::asLocalDate)
-                    require("tom", JsonNode::asLocalDate)
-                }
             }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
-            val fagsystemId = packet["fagsystemId"].textValue()
-            val utbetalingslinjer = packet["utbetalingslinjer"]
-            val fom = requireNotNull(utbetalingslinjer.map { it["fom"].asLocalDate() }.minOrNull())
-            val tom = requireNotNull(utbetalingslinjer.map { it["tom"].asLocalDate() }.maxOrNull())
+            val arbeidsgiverFagsystemId = packet["arbeidsgiverFagsystemId"].textValue()
+            val fom = packet["fom"].asLocalDate()
+            val tom = packet["tom"].asLocalDate()
             val utbetalingId = packet["utbetalingId"].asText()
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
@@ -105,7 +102,7 @@ class AnnullertRiverV1(
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,
-                førsteFraværsdag = fagsystemId,
+                førsteFraværsdag = arbeidsgiverFagsystemId,
                 forbrukteStønadsdager = 0
             ).republish(vedtakproducer, vedtaksfeedTopic)
                 .also { log.info("Republiserer annullering for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }

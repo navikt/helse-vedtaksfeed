@@ -291,17 +291,10 @@ private val annullering = """{
     "aktørId": "aktørId",
     "fødselsnummer": "fnr",
     "organisasjonsnummer": "999263550",
-    "fagsystemId": "3333JT3JYNB3VNT5CE5U54R3Y4",
+    "arbeidsgiverFagsystemId": "3333JT3JYNB3VNT5CE5U54R3Y4",
     "utbetalingId": "bf1d3157-5cfa-4b37-8faa-63cd3c3f314f",
-    "annullertAvSaksbehandler" : "2018-01-01T12:00:00",
-    "utbetalingslinjer": [
-        {
-            "fom": "2018-01-01",
-            "tom": "2018-02-01",
-            "beløp": 1000,
-            "grad": 100.0
-        }
-    ],
+    "fom": "2018-01-01",
+    "tom": "2018-02-01",
     "@opprettet": "2018-01-01T12:00:00",
     "system_read_count": 0
 }
