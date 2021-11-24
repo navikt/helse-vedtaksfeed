@@ -112,7 +112,7 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
         }
@@ -128,7 +128,7 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(79, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                assertEquals("C6GNAZID6IFNURRWEJ6WP3IE5D", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
         }
@@ -144,7 +144,6 @@ internal class EndToEndTest {
                 assertEquals(LocalDate.of(2021, 8, 31), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(11, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                // I påvente av at utbetalingen har sin egen "fagsystenId" bruker vi den fra arbeidsgiveroppdraget
                 assertEquals("WHQQO7GYFZBMPBVJU7H2B2BWTA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2021, 11, 11), feed.elementer[0].metadata.opprettetDato)
             }
@@ -291,7 +290,7 @@ private val annullering = """{
     "aktørId": "aktørId",
     "fødselsnummer": "fnr",
     "organisasjonsnummer": "999263550",
-    "arbeidsgiverFagsystemId": "3333JT3JYNB3VNT5CE5U54R3Y4",
+    "korrelasjonsId": "def7b4cf-69c3-43ba-b67d-113b4ef23bc7",
     "utbetalingId": "bf1d3157-5cfa-4b37-8faa-63cd3c3f314f",
     "fom": "2018-01-01",
     "tom": "2018-02-01",
@@ -301,69 +300,22 @@ private val annullering = """{
 """
 
 @Language("JSON")
-private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsdager: Int = 80) = """{
-  "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
-  "type": "$utbetalingtype",
-  "fom": "2020-08-09",
-  "tom": "2020-08-24",
-  "maksdato": "2021-03-17",
-  "forbrukteSykedager": 80,
-  "stønadsdager": $stønadsdager,
-  "gjenståendeSykedager": 68,
-  "ident": "Automatisk behandlet",
-  "epost": "tbd@nav.no",
-  "tidspunkt": "2020-12-14T15:38:10.479991",
-  "automatiskBehandling": true,
-  "arbeidsgiverOppdrag": {
-    "mottaker": "999999999",
-    "fagområde": "SPREF",
-    "linjer": [
-      {
-        "fom": "2020-08-09",
-        "tom": "2020-08-24",
-        "dagsats": 1623,
-        "lønn": 2029,
-        "grad": 80.0,
-        "stønadsdager": 11,
-        "totalbeløp": 17853,
-        "endringskode": "UEND",
-        "delytelseId": 1,
-        "refDelytelseId": null,
-        "refFagsystemId": null,
-        "statuskode": null,
-        "datoStatusFom": null,
-        "klassekode": "SPREFAG-IOP"
-      }
-    ],
-    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
-    "endringskode": "ENDR",
-    "sisteArbeidsgiverdag": null,
-    "tidsstempel": "2020-12-14T15:36:32.932737",
-    "nettoBeløp": 15525,
-    "stønadsdager": $stønadsdager,
-    "fom": "2020-08-09",
-    "tom": "2020-08-24"
-  },
-  "personOppdrag": {
-    "mottaker": "11111100000",
-    "fagområde": "SP",
-    "linjer": [],
-    "fagsystemId": "C6GNAZID6IFNURRWEJ6WP3IE5D",
-    "endringskode": "NY",
-    "sisteArbeidsgiverdag": null,
-    "tidsstempel": "2020-12-14T15:36:32.932944",
-    "nettoBeløp": 0,
-    "stønadsdager": 0,
-    "fom": "-999999999-01-01",
-    "tom": "-999999999-01-01"
-  },
-  "@event_name": "utbetaling_utbetalt",
-  "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
-  "@opprettet": "2020-12-14T15:38:14.419655",
-  "aktørId": "1111110000000",
-  "fødselsnummer": "11111100000",
-  "organisasjonsnummer": "999999999"
-}
+private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsdager: Int = 80) = """
+    {
+      "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
+      "type": "$utbetalingtype",
+      "fom": "2020-08-09",
+      "tom": "2020-08-24",
+      "stønadsdager": $stønadsdager,
+      "tidspunkt": "2020-12-14T15:38:10.479991",
+      "korrelasjonsId": "27a641a5-2a0d-4980-8899-aff768a5e600",
+      "@event_name": "utbetaling_utbetalt",
+      "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
+      "@opprettet": "2020-12-14T15:38:14.419655",
+      "aktørId": "1111110000000",
+      "fødselsnummer": "11111100000",
+      "organisasjonsnummer": "999999999"
+  }
 """
 
 @Language("JSON")
@@ -373,238 +325,12 @@ private fun utbetalingTilBruker() = """
       "type": "UTBETALING",
       "fom": "2021-08-17",
       "tom": "2021-08-31",
-      "maksdato": "2022-07-28",
-      "forbrukteSykedager": 11,
-      "gjenståendeSykedager": 237,
       "stønadsdager": 11,
-      "ident": "N143409",
-      "epost": "Knut.Nygaard@nav.no",
       "tidspunkt": "2021-11-11T10:56:08.464312658",
-      "automatiskBehandling": false,
-      "arbeidsgiverOppdrag": {
-        "mottaker": "972674818",
-        "fagområde": "SPREF",
-        "linjer": [],
-        "fagsystemId": "WHQQO7GYFZBMPBVJU7H2B2BWTA",
-        "endringskode": "NY",
-        "sisteArbeidsgiverdag": "2021-08-16",
-        "tidsstempel": "2021-11-11T10:54:26.188206606",
-        "nettoBeløp": 0,
-        "stønadsdager": 0,
-        "fom": "-999999999-01-01",
-        "tom": "-999999999-01-01"
-      },
-      "personOppdrag": {
-        "mottaker": "09047606370",
-        "fagområde": "SP",
-        "linjer": [
-          {
-            "fom": "2021-08-17",
-            "tom": "2021-08-31",
-            "satstype": "DAG",
-            "sats": 1622,
-            "dagsats": 1622,
-            "lønn": 1622,
-            "grad": 100.0,
-            "stønadsdager": 11,
-            "totalbeløp": 17842,
-            "endringskode": "NY",
-            "delytelseId": 1,
-            "refDelytelseId": null,
-            "refFagsystemId": null,
-            "statuskode": null,
-            "datoStatusFom": null,
-            "klassekode": "SPATORD"
-          }
-        ],
-        "fagsystemId": "DGPPPJYCVZAGPKBWIEEDMCTBRY",
-        "endringskode": "NY",
-        "sisteArbeidsgiverdag": "2021-08-16",
-        "tidsstempel": "2021-11-11T10:54:26.188929001",
-        "nettoBeløp": 17842,
-        "stønadsdager": 11,
-        "fom": "2021-08-17",
-        "tom": "2021-08-31"
-      },
-      "utbetalingsdager": [
-        {
-          "dato": "2021-08-01",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-02",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-03",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-04",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-05",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-06",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-07",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-08",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-09",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-10",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-11",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-12",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-13",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-14",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-15",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-16",
-          "type": "ArbeidsgiverperiodeDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-17",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-18",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-19",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-20",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-21",
-          "type": "NavHelgDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-22",
-          "type": "NavHelgDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-23",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-24",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-25",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-26",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-27",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-28",
-          "type": "NavHelgDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-29",
-          "type": "NavHelgDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-30",
-          "type": "NavDag",
-          "begrunnelser": null
-        },
-        {
-          "dato": "2021-08-31",
-          "type": "NavDag",
-          "begrunnelser": null
-        }
-      ],
-      "vedtaksperiodeIder": [
-        "d9961c58-8f1d-4f9f-be53-763eaf609061"
-      ],
-      "system_read_count": 0,
-      "system_participating_services": [
-        {
-          "service": "spleis",
-          "instance": "spleis-5c84499f54-6sncs",
-          "time": "2021-11-11T10:56:09.745848961"
-        }
-      ],
+      "korrelasjonsId": "b1e1077c-d82e-42c7-86a9-a7cfa0e83698",
       "@event_name": "utbetaling_utbetalt",
       "@id": "25f8a9a0-3034-457d-9976-6e2575970c1f",
       "@opprettet": "2021-11-11T10:56:09.746062805",
-      "@forårsaket_av": {
-        "behov": [
-          "Utbetaling"
-        ],
-        "event_name": "behov",
-        "id": "2271a8c9-4a0e-40cb-86fd-53eb4b1e827b",
-        "opprettet": "2021-11-11T10:56:08.888119238"
-      },
       "fødselsnummer": "09047606370",
       "aktørId": "2336848909974",
       "organisasjonsnummer": "972674818"

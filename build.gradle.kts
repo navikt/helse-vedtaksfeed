@@ -19,6 +19,7 @@ dependencies {
     implementation("io.ktor:ktor-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-jackson:$ktorVersion")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
+    implementation("commons-codec:commons-codec:1.15")
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 

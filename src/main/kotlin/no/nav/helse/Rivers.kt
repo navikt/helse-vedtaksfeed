@@ -5,6 +5,7 @@ import no.nav.helse.rapids_rivers.*
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
+import java.util.*
 
 private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
 
@@ -28,8 +29,7 @@ class UtbetalingUtbetaltRiver(
                     "fom",
                     "tom",
                     "stønadsdager",
-                    "arbeidsgiverOppdrag",
-                    "arbeidsgiverOppdrag.fagsystemId",
+                    "korrelasjonsId"
                 )
             }
         }.register(this)
@@ -43,21 +43,18 @@ class UtbetalingUtbetaltRiver(
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             val utbetalingId = packet["utbetalingId"].asText()
-            packet["arbeidsgiverOppdrag"]
-                .let { oppdrag ->
-                    Vedtak(
-                        type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
-                        opprettet = packet["tidspunkt"].asLocalDateTime(),
-                        aktørId = packet["aktørId"].textValue(),
-                        fødselsnummer = packet["fødselsnummer"].asText(),
-                        førsteStønadsdag = packet["fom"].asLocalDate(),
-                        sisteStønadsdag = packet["tom"].asLocalDate(),
-                        // I påvente av at utbetalingen har sin egen "fagsystenId" bruker vi den fra arbeidsgiveroppdraget
-                        førsteFraværsdag = oppdrag["fagsystemId"].textValue(),
-                        forbrukteStønadsdager = packet["stønadsdager"].intValue()
-                    ).republish(vedtakproducer, vedtaksfeedTopic)
-                        .also { log.info("Republiserer vedtak for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }
-                }
+            val korrelasjonsId = UUID.fromString(packet["korrelasjonsId"].textValue()).base32Encode()
+            Vedtak(
+                type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
+                opprettet = packet["tidspunkt"].asLocalDateTime(),
+                aktørId = packet["aktørId"].textValue(),
+                fødselsnummer = packet["fødselsnummer"].asText(),
+                førsteStønadsdag = packet["fom"].asLocalDate(),
+                sisteStønadsdag = packet["tom"].asLocalDate(),
+                førsteFraværsdag = korrelasjonsId,
+                forbrukteStønadsdager = packet["stønadsdager"].intValue()
+            ).republish(vedtakproducer, vedtaksfeedTopic)
+                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -81,7 +78,7 @@ class AnnullertRiverV1(
                     "aktørId",
                     "organisasjonsnummer",
                     "utbetalingId",
-                    "arbeidsgiverFagsystemId",
+                    "korrelasjonsId",
                     "fom",
                     "tom"
                 )
@@ -91,10 +88,10 @@ class AnnullertRiverV1(
 
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
-            val arbeidsgiverFagsystemId = packet["arbeidsgiverFagsystemId"].textValue()
+            val utbetalingId = packet["utbetalingId"].asText()
+            val korrelasjonsId = UUID.fromString(packet["korrelasjonsId"].textValue()).base32Encode()
             val fom = packet["fom"].asLocalDate()
             val tom = packet["tom"].asLocalDate()
-            val utbetalingId = packet["utbetalingId"].asText()
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),
@@ -102,10 +99,10 @@ class AnnullertRiverV1(
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,
-                førsteFraværsdag = arbeidsgiverFagsystemId,
+                førsteFraværsdag = korrelasjonsId,
                 forbrukteStønadsdager = 0
             ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer annullering for utbetalingId=${utbetalingId} på intern topic med offset ${it.offset()}") }
+                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -115,3 +112,5 @@ class AnnullertRiverV1(
 
 private fun Vedtak.republish(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) =
     vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this)).get()
+
+
