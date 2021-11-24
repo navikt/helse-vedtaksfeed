@@ -43,7 +43,7 @@ class UtbetalingUtbetaltRiver(
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             val utbetalingId = packet["utbetalingId"].asText()
-            val korrelasjonsId = UUID.fromString(packet["korrelasjonsId"].textValue()).base32Encode()
+            val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
@@ -51,10 +51,10 @@ class UtbetalingUtbetaltRiver(
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = packet["fom"].asLocalDate(),
                 sisteStønadsdag = packet["tom"].asLocalDate(),
-                førsteFraværsdag = korrelasjonsId,
+                førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet["stønadsdager"].intValue()
             ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId på intern topic med offset ${it.offset()}") }
+                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -89,7 +89,7 @@ class AnnullertRiverV1(
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         try {
             val utbetalingId = packet["utbetalingId"].asText()
-            val korrelasjonsId = UUID.fromString(packet["korrelasjonsId"].textValue()).base32Encode()
+            val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
             val fom = packet["fom"].asLocalDate()
             val tom = packet["tom"].asLocalDate()
             Vedtak(
@@ -99,15 +99,19 @@ class AnnullertRiverV1(
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,
-                førsteFraværsdag = korrelasjonsId,
+                førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = 0
             ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId på intern topic med offset ${it.offset()}") }
+                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset ${it.offset()}") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
         }
     }
+}
+
+private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
+    korrelasjonsId to korrelasjonsId.base32Encode()
 }
 
 private fun Vedtak.republish(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) =
