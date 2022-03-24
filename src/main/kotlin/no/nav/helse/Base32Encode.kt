@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.util.*
 
 private const val pad = '='
-private const val padByte = '='.code.toByte()
+private const val padByte = pad.code.toByte()
 
 internal fun UUID.base32Encode(): String {
     return Base32(padByte)

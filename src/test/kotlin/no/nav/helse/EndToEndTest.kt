@@ -6,8 +6,8 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.ktor.http.*
+import io.ktor.server.cio.*
 import io.ktor.server.engine.*
-import io.ktor.server.netty.*
 import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -215,7 +215,7 @@ internal class EndToEndTest {
         withSecurity = false
     )
 
-    private fun setupKtor() = embeddedServer(Netty, applicationEngineEnvironment {
+    private fun setupKtor() = embeddedServer(CIO, applicationEngineEnvironment {
         connector {
             port = randomPort
         }

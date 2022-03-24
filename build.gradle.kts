@@ -1,10 +1,10 @@
 val junitJupiterVersion = "5.6.3"
-val ktorVersion = "1.5.0"
-val rapidsAndRiversVersion = "1.5e3ca6a"
-val wireMockVersion = "2.27.1"
+val ktorVersion = "1.6.7"
+val rapidsAndRiversVersion = "2022.03.20-08.39.e957b9917a89"
+val wireMockVersion = "2.31.0"
 
 plugins {
-    kotlin("jvm") version "1.5.21"
+    kotlin("jvm") version "1.6.10"
 }
 
 group = "no.nav.helse"
@@ -27,25 +27,26 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
 
-    testImplementation("no.nav:kafka-embedded-env:2.4.0")
+    testImplementation("com.github.navikt:kafka-embedded-env:kafka310-SNAPSHOT")
     testImplementation("org.awaitility:awaitility:4.0.3")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion") {
+        exclude(group = "junit")
         exclude(group = "org.eclipse.jetty") // konflikterende dep med wiremock
     }
 
     testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
-    testImplementation("com.github.tomakehurst:wiremock:$wireMockVersion") {
+    testImplementation("com.github.tomakehurst:wiremock-jre8:$wireMockVersion") {
         exclude(group = "junit")
     }
 }
 
 tasks {
     compileKotlin {
-        kotlinOptions.jvmTarget = "16"
+        kotlinOptions.jvmTarget = "17"
     }
     compileTestKotlin {
-        kotlinOptions.jvmTarget = "16"
+        kotlinOptions.jvmTarget = "17"
     }
 
     withType<Jar> {

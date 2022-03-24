@@ -1,8 +1,8 @@
 package no.nav.helse
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.*
-import kotlin.test.assertEquals
 
 internal class Base32EncodeTest {
 
