@@ -5,6 +5,7 @@ import no.nav.helse.rapids_rivers.*
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.util.*
 
 private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
@@ -29,7 +30,9 @@ class UtbetalingUtbetaltRiver(
                     "fom",
                     "tom",
                     "stønadsdager",
-                    "korrelasjonsId"
+                    "korrelasjonsId",
+                    "maksdato",
+                    "gjenståendeSykedager",
                 )
             }
         }.register(this)
@@ -50,7 +53,7 @@ class UtbetalingUtbetaltRiver(
                 aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = packet["fom"].asLocalDate(),
-                sisteStønadsdag = packet["tom"].asLocalDate(),
+                sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet["stønadsdager"].intValue()
             ).republish(vedtakproducer, vedtaksfeedTopic)
@@ -113,6 +116,8 @@ class AnnullertRiverV1(
 private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
     korrelasjonsId to korrelasjonsId.base32Encode()
 }
+
+private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("maksdato").asLocalDate())
 
 private fun Vedtak.republish(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) =
     vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this)).get()

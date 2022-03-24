@@ -64,7 +64,7 @@ internal class EndToEndTest {
 
         "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
-            assertEquals(21, feed.elementer.size)
+            assertEquals(22, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
@@ -113,6 +113,22 @@ internal class EndToEndTest {
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
+            }
+        }
+    }
+
+    @Test
+    fun utbetalingTilMaksdato() {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=102&maxAntall=1".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 8, 20), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals(33, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("XWZFMAISNZFMFO33LGFZ5XMDQY", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
             }
         }
@@ -275,6 +291,7 @@ internal class EndToEndTest {
         rapid.sendTestMessage(annullering)
         rapid.sendTestMessage(utbetalingUtbetalt("REVURDERING", stønadsdager = 79))
         rapid.sendTestMessage(utbetalingTilBruker())
+        rapid.sendTestMessage(utbetalingUtbetaltUtenGjenståendeDager)
     }
 
     @AfterAll
@@ -306,11 +323,34 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
       "type": "$utbetalingtype",
       "fom": "2020-08-09",
       "tom": "2020-08-24",
+      "maksdato": "2020-12-20",
+      "gjenståendeSykedager": ${248 - stønadsdager},
       "stønadsdager": $stønadsdager,
       "tidspunkt": "2020-12-14T15:38:10.479991",
       "korrelasjonsId": "27a641a5-2a0d-4980-8899-aff768a5e600",
       "@event_name": "utbetaling_utbetalt",
       "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
+      "@opprettet": "2020-12-14T15:38:14.419655",
+      "aktørId": "1111110000000",
+      "fødselsnummer": "11111100000",
+      "organisasjonsnummer": "999999999"
+  }
+"""
+
+@Language("JSON")
+private val utbetalingUtbetaltUtenGjenståendeDager = """
+    {
+      "utbetalingId": "eca9f8dd-eff6-4a8e-8624-4ad802256da1",
+      "type": "UTBETALING",
+      "fom": "2020-08-09",
+      "tom": "2020-08-24",
+      "stønadsdager": 33,
+      "maksdato": "2020-08-20",
+      "gjenståendeSykedager": 0,
+      "tidspunkt": "2020-12-14T15:38:10.479991",
+      "korrelasjonsId": "bdb25601-126e-4ac2-bb7b-598b9edd8386",
+      "@event_name": "utbetaling_utbetalt",
+      "@id": "485e1fc9-b825-4089-874f-71278c93dce9",
       "@opprettet": "2020-12-14T15:38:14.419655",
       "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
@@ -325,6 +365,8 @@ private fun utbetalingTilBruker() = """
       "type": "UTBETALING",
       "fom": "2021-08-17",
       "tom": "2021-08-31",
+      "maksdato": "2021-12-20",
+      "gjenståendeSykedager": 237,
       "stønadsdager": 11,
       "tidspunkt": "2021-11-11T10:56:08.464312658",
       "korrelasjonsId": "b1e1077c-d82e-42c7-86a9-a7cfa0e83698",
