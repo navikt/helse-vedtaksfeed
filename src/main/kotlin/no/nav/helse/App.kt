@@ -15,6 +15,7 @@ import io.ktor.features.*
 import io.ktor.jackson.*
 import io.ktor.routing.*
 import no.nav.helse.rapids_rivers.RapidApplication
+import no.nav.helse.rapids_rivers.RapidsConnection
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -41,17 +42,21 @@ fun main() {
         .build()
 
     val vedtakproducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
-    val publisher: Publisher = { fødselsnummer, vedtak -> vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset() }
 
     RapidApplication.Builder(
         RapidApplication.RapidApplicationConfig.fromEnv(System.getenv())
     ).withKtorModule {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
-        UtbetalingUtbetaltRiver(this, publisher)
-        AnnullertRiverV1(this, publisher)
-        start()
+        setupRivers(vedtakproducer, environment.vedtaksfeedtopic)
     }
+}
+
+internal fun RapidsConnection.setupRivers(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) {
+    val publisher: Publisher = { fødselsnummer, vedtak -> vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset() }
+    UtbetalingUtbetaltRiver(this, publisher)
+    AnnullertRiverV1(this, publisher)
+    start()
 }
 
 internal fun Application.vedtaksfeed(
