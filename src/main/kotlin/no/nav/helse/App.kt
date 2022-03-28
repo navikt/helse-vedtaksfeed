@@ -17,6 +17,7 @@ import io.ktor.routing.*
 import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
@@ -40,14 +41,15 @@ fun main() {
         .build()
 
     val vedtakproducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
+    val publisher: Publisher = { fødselsnummer, vedtak -> vedtakproducer.send(ProducerRecord(environment.vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset() }
 
     RapidApplication.Builder(
         RapidApplication.RapidApplicationConfig.fromEnv(System.getenv())
     ).withKtorModule {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
-        UtbetalingUtbetaltRiver(this, vedtakproducer, environment.vedtaksfeedtopic)
-        AnnullertRiverV1(this, vedtakproducer, environment.vedtaksfeedtopic)
+        UtbetalingUtbetaltRiver(this, publisher)
+        AnnullertRiverV1(this, publisher)
         start()
     }
 }

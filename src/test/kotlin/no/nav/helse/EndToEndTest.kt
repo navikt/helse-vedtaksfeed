@@ -11,10 +11,14 @@ import io.ktor.server.engine.*
 import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.ServerSocket
@@ -280,8 +284,9 @@ internal class EndToEndTest {
 
         val rapid = TestRapid().apply {
             val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-            UtbetalingUtbetaltRiver(this, internVedtakProducer, internTopic)
-            AnnullertRiverV1(this, internVedtakProducer, internTopic)
+            val publisher: Publisher = { fødselsnummer, vedtak -> internVedtakProducer.send(ProducerRecord(internTopic, fødselsnummer, vedtak)).get().offset() }
+            UtbetalingUtbetaltRiver(this, publisher)
+            AnnullertRiverV1(this, publisher)
         }
 
         ktor.start(false)

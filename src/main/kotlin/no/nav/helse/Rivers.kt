@@ -2,18 +2,17 @@ package no.nav.helse
 
 import com.fasterxml.jackson.databind.JsonNode
 import no.nav.helse.rapids_rivers.*
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.*
 
 private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
 
+internal typealias Publisher = (String, Vedtak) -> Long
+
 class UtbetalingUtbetaltRiver(
     rapidsConnection: RapidsConnection,
-    private val vedtakproducer: KafkaProducer<String, Vedtak>,
-    private val vedtaksfeedTopic: String
+    private val vedtaksfeedPublisher: Publisher,
 ) : River.PacketListener {
 
     init {
@@ -56,8 +55,8 @@ class UtbetalingUtbetaltRiver(
                 sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet["stønadsdager"].intValue()
-            ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset ${it.offset()}") }
+            ).republish(vedtaksfeedPublisher)
+                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -67,8 +66,7 @@ class UtbetalingUtbetaltRiver(
 
 class AnnullertRiverV1(
     rapidsConnection: RapidsConnection,
-    private val vedtakproducer: KafkaProducer<String, Vedtak>,
-    private val vedtaksfeedTopic: String
+    private val vedtaksfeedPublisher: Publisher
 ) : River.PacketListener {
 
     init {
@@ -104,8 +102,8 @@ class AnnullertRiverV1(
                 sisteStønadsdag = tom,
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = 0
-            ).republish(vedtakproducer, vedtaksfeedTopic)
-                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset ${it.offset()}") }
+            ).republish(vedtaksfeedPublisher)
+                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -119,7 +117,6 @@ private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId")
 
 private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("maksdato").asLocalDate())
 
-private fun Vedtak.republish(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) =
-    vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, this)).get()
+private fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
 
 
