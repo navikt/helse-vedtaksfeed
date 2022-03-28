@@ -54,7 +54,7 @@ class UtbetalingUtbetaltRiver(
                 førsteStønadsdag = packet["fom"].asLocalDate(),
                 sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
-                forbrukteStønadsdager = packet["stønadsdager"].intValue()
+                forbrukteStønadsdager = packet.forbrukteStønadsdager()
             ).republish(vedtaksfeedPublisher)
                 .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
         } catch (e: Exception) {
@@ -116,6 +116,17 @@ private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId")
 }
 
 private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("maksdato").asLocalDate())
+
+/**
+ * Infotrygd har implementert visning av "utbetalt til maksdato i ny løsning" i skjermbildet sitt (GE VL) på følgende måte:
+ * hvis de mottar et tall som er over 30 000 flagger de "nådd maksdato" (og trekker selvsagt fra 30 000 på forbrukte dager).
+ */
+private fun JsonMessage.forbrukteStønadsdager(): Int {
+    val stønadsdagerPåEkte = this["stønadsdager"].intValue()
+    if (!aktiverMarkeringAvUtbetaltTilMaksdato) return stønadsdagerPåEkte
+    val gjenståendeSykedager = this["gjenståendeSykedager"].intValue()
+    return if (gjenståendeSykedager > 0) stønadsdagerPåEkte else stønadsdagerPåEkte + 30_000
+}
 
 private fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
 

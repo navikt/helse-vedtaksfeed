@@ -32,6 +32,8 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .registerModule(JavaTimeModule())
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
+var aktiverMarkeringAvUtbetaltTilMaksdato: Boolean = System.getenv("NAIS_CLUSTER_NAME")?.startsWith("dev") ?: false
+
 fun main() {
     val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
