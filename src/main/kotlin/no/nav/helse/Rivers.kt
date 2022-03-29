@@ -55,7 +55,10 @@ class UtbetalingUtbetaltRiver(
                 sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
-            ).republish(vedtaksfeedPublisher)
+            ).also {
+                tjenestekallLog.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic:\n${objectMapper.writeValueAsString(it)}")
+            }
+                .republish(vedtaksfeedPublisher)
                 .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
