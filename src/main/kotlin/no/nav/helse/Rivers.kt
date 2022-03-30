@@ -122,13 +122,13 @@ private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("
 
 /**
  * Infotrygd har implementert visning av "utbetalt til maksdato i ny løsning" i skjermbildet sitt (GE VL) på følgende måte:
- * hvis de mottar et tall som er over 30 000 flagger de "nådd maksdato" (og trekker selvsagt fra 30 000 på forbrukte dager).
+ * hvis de mottar et tall som er over 5 000 flagger de "nådd maksdato" (og trekker selvsagt fra 5 000 på forbrukte dager).
  */
 private fun JsonMessage.forbrukteStønadsdager(): Int {
     val stønadsdagerPåEkte = this["stønadsdager"].intValue()
     if (!aktiverMarkeringAvUtbetaltTilMaksdato) return stønadsdagerPåEkte
     val gjenståendeSykedager = this["gjenståendeSykedager"].intValue()
-    return if (gjenståendeSykedager > 0) stønadsdagerPåEkte else stønadsdagerPåEkte + 30_000
+    return if (gjenståendeSykedager > 0) stønadsdagerPåEkte else stønadsdagerPåEkte + 5_000
 }
 
 private fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)

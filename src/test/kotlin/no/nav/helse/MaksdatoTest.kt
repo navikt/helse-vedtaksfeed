@@ -22,9 +22,9 @@ class MaksdatoTest {
     }
 
     @Test
-    fun `legger på 30 000 på forbrukte dager når det ble uttalt til maksdato`() {
+    fun `legger på 5 000 på forbrukte dager når det ble uttalt til maksdato`() {
         rapid.sendTestMessage(utbetalingUtbetaltUtenGjenståendeDager)
-        assertEquals(30033, interneVedtak[0].forbrukteStønadsdager)
+        assertEquals(5033, interneVedtak[0].forbrukteStønadsdager)
     }
 
     @Test
