@@ -18,7 +18,6 @@ class MaksdatoTest {
             UtbetalingUtbetaltRiver(this, publisher)
             AnnullertRiverV1(this, publisher)
         }
-        aktiverMarkeringAvUtbetaltTilMaksdato = true
     }
 
     @Test

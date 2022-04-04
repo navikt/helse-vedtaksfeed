@@ -125,7 +125,6 @@ private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("
  */
 private fun JsonMessage.forbrukteStønadsdager(): Int {
     val stønadsdagerPåEkte = this["stønadsdager"].intValue()
-    if (!aktiverMarkeringAvUtbetaltTilMaksdato) return stønadsdagerPåEkte
     val gjenståendeSykedager = this["gjenståendeSykedager"].intValue()
     return if (gjenståendeSykedager > 0) stønadsdagerPåEkte else stønadsdagerPåEkte + 5_000
 }
