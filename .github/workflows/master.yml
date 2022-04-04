@@ -44,7 +44,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --project-name=vedtaksfeed --org=tbd-ty7 --fail-on=all
+          args: --project-name=vedtaksfeed --org=tbd-ty7 --fail-on=all --configuration-matching='^runtimeClasspath'
           command: monitor
 
   deployDev:
