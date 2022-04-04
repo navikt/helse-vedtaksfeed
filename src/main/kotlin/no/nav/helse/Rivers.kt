@@ -55,9 +55,8 @@ class UtbetalingUtbetaltRiver(
                 sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
-            ).also {
-                tjenestekallLog.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic:\n${objectMapper.writeValueAsString(it)}")
-            }
+            )
+                .also { if (it.forbrukteStønadsdager > 5_000) log.info("Utbetalt til maksdato i ny løsning for ${it.aktørId}") }
                 .republish(vedtaksfeedPublisher)
                 .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
         } catch (e: Exception) {

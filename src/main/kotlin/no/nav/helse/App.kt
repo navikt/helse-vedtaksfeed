@@ -32,8 +32,7 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .registerModule(JavaTimeModule())
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
-var aktiverMarkeringAvUtbetaltTilMaksdato: Boolean = (System.getenv("NAIS_CLUSTER_NAME")?.startsWith("dev") ?: false)
-    .also { log.info("Applikasjonsbryter 'aktiverMarkeringAvUtbetaltTilMaksdato' har verdi: $it") }
+var aktiverMarkeringAvUtbetaltTilMaksdato: Boolean = System.getenv("NAIS_CLUSTER_NAME")?.startsWith("dev") ?: false
 
 fun main() {
     val serviceUser = readServiceUserCredentials()

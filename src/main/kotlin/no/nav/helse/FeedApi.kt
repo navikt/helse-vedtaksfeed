@@ -7,11 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.time.Duration
-
-private val tjenestekallLog: Logger = LoggerFactory.getLogger("tjenestekall")
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -33,9 +29,6 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
 
-        if (aktiverMarkeringAvUtbetaltTilMaksdato) {
-            tjenestekallLog.info("Returnerer følgende data:\n${objectMapper.writeValueAsString(feed)}")
-        }
         context.respond(feed)
             .also { log.info("Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest") }
     }
