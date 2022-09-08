@@ -27,7 +27,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
 
-    testImplementation("com.github.navikt:kafka-embedded-env:kafka310-SNAPSHOT")
+    testImplementation("no.nav:kafka-embedded-env:3.2.1")
     testImplementation("org.awaitility:awaitility:4.0.3")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion") {
