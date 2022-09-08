@@ -34,11 +34,8 @@ dependencies {
                 version { require("4.1.80.Final") }
                 because("no.nav:kafka-embedded-env:3.2.1 drar inn sårbar versjon 4.1.77.Final")
             }
-            implementation("log4j:log4j") {
-                version { require("1.2.18") }
-                because("no.nav:kafka-embedded-env:3.2.1 drar inn sårbar versjon 1.2.17")
-            }
         }
+        exclude(group = "log4j", module = "log4j")
     }
     testImplementation("org.awaitility:awaitility:4.0.3")
 
