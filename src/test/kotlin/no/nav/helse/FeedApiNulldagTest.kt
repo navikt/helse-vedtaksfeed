@@ -1,8 +1,8 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import io.ktor.http.*
-import io.ktor.routing.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.server.testing.*
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -24,14 +24,8 @@ internal class FeedApiNulldagTest {
         KafkaEnvironment.TopicInfo(testTopic, partitions = 1)
     )
     private val embeddedKafkaEnvironment = KafkaEnvironment(
-        autoStart = false,
-        noOfBrokers = 1,
-        topicInfos = topicInfos,
-        withSchemaRegistry = false,
-        withSecurity = false
+        autoStart = false, noOfBrokers = 1, topicInfos = topicInfos, withSchemaRegistry = false, withSecurity = false
     )
-
-    lateinit var consumer: KafkaConsumer<String, Vedtak>
 
     @Test
     fun `får tilbake elementer fra feed`() {
@@ -42,33 +36,30 @@ internal class FeedApiNulldagTest {
         }
 
         val kafkaProducer = KafkaProducer<String, String>(testKafkaProperties)
-        consumer = KafkaConsumer(loadTestConfig().toSeekingConsumer())
+        val consumer = KafkaConsumer<String, Vedtak>(loadTestConfig().toSeekingConsumer())
 
-        withTestApplication({
-            installJacksonFeature()
-            routing {
-                feedApi(testTopic, consumer)
-            }
-        }) {
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
-                val feed = objectMapper.readValue<Feed>(response.content!!)
+        testApplication {
+            application { installJacksonFeature() }
+            routing { feedApi(testTopic, consumer) }
+
+            client.get("/feed?sistLesteSekvensId=0").let { response ->
+                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
                 assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic er tom")
             }
 
             val (fom1, tom1) = LocalDate.of(2020, 3, 1) to LocalDate.of(2020, 3, 15)
             kafkaProducer.send(ProducerRecord(testTopic, "0", vedtak(fom1, tom1)))
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
-                val feed = objectMapper.readValue<Feed>(response.content!!)
+            client.get("/feed?sistLesteSekvensId=0").let { response ->
+                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
                 assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic bare har ett element")
             }
 
             val (fom2, tom2) = LocalDate.of(2020, 4, 1) to LocalDate.of(2020, 4, 15)
             kafkaProducer.send(ProducerRecord(testTopic, "1", vedtak(fom2, tom2)))
-            with(handleRequest(HttpMethod.Get, "/feed?sistLesteSekvensId=0")) {
-                val feed = objectMapper.readValue<Feed>(response.content!!)
+            client.get("/feed?sistLesteSekvensId=0").let { response ->
+                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
                 assertTrue(
-                    feed.elementer.isNotEmpty(),
-                    "Feed skal ha elementer når det er mer enn ett element på topic"
+                    feed.elementer.isNotEmpty(), "Feed skal ha elementer når det er mer enn ett element på topic"
                 )
                 assertEquals(2, feed.elementer.size)
                 assertEquals(fom1.toString(), feed.elementer[0].innhold.utbetalingsreferanse)

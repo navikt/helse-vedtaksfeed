@@ -1,7 +1,7 @@
 package no.nav.helse
 
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerAnnullert_v1
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
