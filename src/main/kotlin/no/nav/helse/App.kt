@@ -91,7 +91,7 @@ fun main() {
                 }
                 onpremConsumer.seekToEnd(listOf(topicPartition))
                 val oppdatertSisteOffset = onpremConsumer.position(topicPartition) - 1
-                log.info("sisteOffset=$sisteOffset, oppdatertSisteOffset=$oppdatertSisteOffset")
+                log.info("sisteOffset=$sisteOffset, oppdatertSisteOffset=$oppdatertSisteOffset, nåværendeOffset=$nåværendeOffset")
                 exitProcess(0)
             }
         })
