@@ -90,7 +90,8 @@ fun main() {
             }
         })
         setupRivers { fødselsnummer, vedtak ->
-            val offsetOnprem = vedtakonpremProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
+            log.info("publiserer vedtak på feed-topic")
+            val offsetOnprem = vedtakonpremProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, 0, fødselsnummer, vedtak)).get().offset()
             vedtakaivenProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset().also { offsetAiven ->
                 check (offsetAiven == offsetOnprem)
             }
