@@ -87,7 +87,7 @@ internal class KafkaConfig(
 
     internal fun producerConfig() = Properties().apply {
         putAll(kafkaBaseConfig())
-        put(ProducerConfig.ACKS_CONFIG, "2")
+        put(ProducerConfig.ACKS_CONFIG, "1")
         put(ProducerConfig.LINGER_MS_CONFIG, "0")
         put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
     }
