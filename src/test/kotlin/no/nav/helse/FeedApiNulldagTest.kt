@@ -5,10 +5,12 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.server.testing.*
 import no.nav.common.KafkaEnvironment
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -26,6 +28,15 @@ internal class FeedApiNulldagTest {
     private val embeddedKafkaEnvironment = KafkaEnvironment(
         autoStart = false, noOfBrokers = 1, topicInfos = topicInfos, withSchemaRegistry = false, withSecurity = false
     )
+
+    private fun Properties.toSeekingConsumer() = Properties().also {
+        it.putAll(this)
+        it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
+        it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+        it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+        it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+    }
 
     @Test
     fun `får tilbake elementer fra feed`() {

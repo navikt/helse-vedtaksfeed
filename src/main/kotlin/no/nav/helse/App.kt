@@ -19,16 +19,12 @@ import no.nav.helse.rapids_rivers.RapidsConnection
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
-import java.time.Duration
-import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.system.exitProcess
 
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -38,15 +34,12 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
 fun main() {
-    val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
 
     val jwkProvider = JwkProviderBuilder(URL(environment.jwksUrl))
         .cached(10, 24, TimeUnit.HOURS)
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
-
-    val vedtakonpremProducer by lazy { KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig()) }
 
     val env = System.getenv()
     val aivenConfig = KafkaConfig(
@@ -56,19 +49,16 @@ fun main() {
         keystoreLocation = env["KAFKA_KEYSTORE_PATH"],
         keystorePassword = env["KAFKA_CREDSTORE_PASSWORD"],
     )
-    val vedtakaivenProducer = KafkaProducer(aivenConfig.producerConfig(), StringSerializer(), VedtakSerializer())
 
     RapidApplication.Builder(
         RapidApplication.RapidApplicationConfig.fromEnv(System.getenv())
     ).withKtorModule {
-        vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
+        vedtaksfeed(environment, jwkProvider, KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()))
     }.build().apply {
+        val vedtakaivenProducer = KafkaProducer(aivenConfig.producerConfig(), StringSerializer(), VedtakSerializer())
         setupRivers { fødselsnummer, vedtak ->
             log.info("publiserer vedtak på feed-topic")
-            val offsetOnprem = vedtakonpremProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, 0, fødselsnummer, vedtak)).get().offset()
-            vedtakaivenProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset().also { offsetAiven ->
-                check (offsetAiven == offsetOnprem) { "forventer å ha samme offset onprem og off-prem: $offsetOnprem vs $offsetAiven"}
-            }
+            vedtakaivenProducer.send(ProducerRecord(environment.vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
         }
     }
 }
@@ -82,7 +72,7 @@ internal fun RapidsConnection.setupRivers(publisher: Publisher) {
 internal fun Application.vedtaksfeed(
     environment: Environment,
     jwkProvider: JwkProvider,
-    vedtaksfeedConsumerProps: Properties
+    consumer: KafkaConsumer<String, Vedtak>
 ) {
     val authenticatedUsers = listOf("srvvedtaksfeed", "srvInfot")
 
@@ -103,12 +93,9 @@ internal fun Application.vedtaksfeed(
         }
     }
 
-    val vedtaksfeedconsumer =
-        KafkaConsumer<String, Vedtak>(vedtaksfeedConsumerProps.toSeekingConsumer())
-
     routing {
         authenticate {
-            feedApi(environment.onpremVedtaksfeedtopic, vedtaksfeedconsumer)
+            feedApi(environment.vedtaksfeedtopic, consumer)
         }
     }
 }

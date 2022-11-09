@@ -10,8 +10,13 @@ import io.ktor.server.cio.*
 import io.ktor.server.engine.*
 import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterAll
@@ -209,7 +214,7 @@ internal class EndToEndTest {
 
     private val ktor: ApplicationEngine = setupKtor()
 
-    private val internTopic = "privat-helse-vedtaksfeed-infotrygd"
+    private val internTopic = "tbd.infotrygd.vedtaksfeed.v1"
     private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
     private val embeddedKafkaEnvironment = KafkaEnvironment(
         autoStart = false,
@@ -225,19 +230,25 @@ internal class EndToEndTest {
         }
         module {
             val testEnv = Environment(
-                kafkaBootstrapServers = "",
                 jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                jwtIssuer = jwtIssuer,
-                truststorePassword = null,
-                truststorePath = null
+                jwtIssuer = jwtIssuer
             )
             vedtaksfeed(
                 testEnv,
                 JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
-                loadTestConfig().toProducerConfig()
+                KafkaConsumer(loadTestConfig().toSeekingConsumer(), StringDeserializer(), VedtakDeserializer())
             )
         }
     })
+
+    private fun Properties.toSeekingConsumer() = Properties().also {
+        it.putAll(this)
+        it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
+        it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+        it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+        it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+    }
 
     private fun mockAuthentication(): String {
         wireMockServer.start()
@@ -259,6 +270,15 @@ internal class EndToEndTest {
 
     private fun loadTestConfig(): Properties = Properties().also {
         it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
+    }
+
+    private fun Properties.toProducerConfig(): Properties = Properties().also {
+        it.putAll(this)
+        it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+        it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = VedtakSerializer::class.java
+        put(ProducerConfig.ACKS_CONFIG, "1")
+        put(ProducerConfig.LINGER_MS_CONFIG, "0")
+        put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
     }
 
     @BeforeAll
