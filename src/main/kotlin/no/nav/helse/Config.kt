@@ -92,6 +92,13 @@ internal class KafkaConfig(
         put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
     }
 
+    internal fun consumerConfig() = Properties().apply {
+        putAll(kafkaBaseConfig())
+        put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1000")
+        put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
+        put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+    }
+
     private fun kafkaBaseConfig() = Properties().apply {
         put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
         put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.SSL.name)

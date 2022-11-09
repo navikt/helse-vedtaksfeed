@@ -20,6 +20,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -71,22 +72,27 @@ fun main() {
                 onpremConsumer.seekToEnd(listOf(topicPartition))
                 val sisteOffset = onpremConsumer.position(topicPartition) - 1 // subtraherer med 1 fordi vi får offset til _neste_ record, ikke siste
                 onpremConsumer.seekToBeginning(listOf(topicPartition))
-                var nåværendeOffset = -1L
-                do {
-                        onpremConsumer.poll(Duration.ofSeconds(1))
-                            .map { record ->
-                                vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value()))
-                            }
-                            .lastOrNull()
-                            ?.get()
-                            ?.offset()
-                            ?.also { nåværendeOffset = it }
+                var nåværendeOffset = KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()).use {
+                    val aivenTopicPartition = TopicPartition(environment.aivenVedtaksfeedtopic, 0)
+                    it.assign(listOf(aivenTopicPartition))
+                    it.seekToEnd(listOf(aivenTopicPartition))
+                    it.position(aivenTopicPartition) - 1
+                }
+                while (nåværendeOffset < sisteOffset) {
+                    onpremConsumer.poll(Duration.ofSeconds(1))
+                        .map { record ->
+                            vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value()))
+                        }
+                        .lastOrNull()
+                        ?.get()
+                        ?.offset()
+                        ?.also { nåværendeOffset = it }
                     log.info("sisteOffset=$sisteOffset, nåværendeOffset=$nåværendeOffset, gjenstående=${sisteOffset - nåværendeOffset}")
-                } while (nåværendeOffset < sisteOffset)
+                }
                 onpremConsumer.seekToEnd(listOf(topicPartition))
                 val oppdatertSisteOffset = onpremConsumer.position(topicPartition) - 1
                 log.info("sisteOffset=$sisteOffset, oppdatertSisteOffset=$oppdatertSisteOffset")
-                if (oppdatertSisteOffset != sisteOffset) exitProcess(1)
+                exitProcess(0)
             }
         })
         setupRivers { fødselsnummer, vedtak ->
