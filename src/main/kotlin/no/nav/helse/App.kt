@@ -45,7 +45,7 @@ fun main() {
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
 
-    val vedtakonpremProducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
+    val vedtakonpremProducer by lazy { KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig()) }
 
     val env = System.getenv()
     val aivenConfig = KafkaConfig(
