@@ -63,43 +63,11 @@ fun main() {
     ).withKtorModule {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
-        register(object : RapidsConnection.StatusListener {
-            override fun onReady(rapidsConnection: RapidsConnection) {
-                val onpremProps = loadBaseConfig(environment, serviceUser)
-                val onpremConsumer = KafkaConsumer<String, Vedtak>(onpremProps.toSeekingConsumer())
-                val topicPartition = TopicPartition(environment.onpremVedtaksfeedtopic, 0)
-                onpremConsumer.assign(listOf(topicPartition))
-                onpremConsumer.seekToEnd(listOf(topicPartition))
-                val sisteOffset = onpremConsumer.position(topicPartition) - 1 // subtraherer med 1 fordi vi får offset til _neste_ record, ikke siste
-                onpremConsumer.seekToBeginning(listOf(topicPartition))
-                var nåværendeOffset = KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()).use {
-                    val aivenTopicPartition = TopicPartition(environment.aivenVedtaksfeedtopic, 0)
-                    it.assign(listOf(aivenTopicPartition))
-                    it.seekToEnd(listOf(aivenTopicPartition))
-                    it.position(aivenTopicPartition) - 1
-                }
-                while (nåværendeOffset < sisteOffset) {
-                    onpremConsumer.poll(Duration.ofSeconds(1))
-                        .map { record ->
-                            vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value()))
-                        }
-                        .lastOrNull()
-                        ?.get()
-                        ?.offset()
-                        ?.also { nåværendeOffset = it }
-                    log.info("sisteOffset=$sisteOffset, nåværendeOffset=$nåværendeOffset, gjenstående=${sisteOffset - nåværendeOffset}")
-                }
-                onpremConsumer.seekToEnd(listOf(topicPartition))
-                val oppdatertSisteOffset = onpremConsumer.position(topicPartition) - 1
-                log.info("sisteOffset=$sisteOffset, oppdatertSisteOffset=$oppdatertSisteOffset, nåværendeOffset=$nåværendeOffset")
-                exitProcess(0)
-            }
-        })
         setupRivers { fødselsnummer, vedtak ->
             log.info("publiserer vedtak på feed-topic")
             val offsetOnprem = vedtakonpremProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, 0, fødselsnummer, vedtak)).get().offset()
             vedtakaivenProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset().also { offsetAiven ->
-                check (offsetAiven == offsetOnprem)
+                check (offsetAiven == offsetOnprem) { "forventer å ha samme offset onprem og off-prem: $offsetOnprem vs $offsetAiven"}
             }
         }
     }
