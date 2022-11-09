@@ -32,16 +32,9 @@ spec:
     pool: nav-dev
   secureLogs:
     enabled: true
-  vault:
-    enabled: true
-    paths:
-      - mountPath: /var/run/secrets/nais.io/service_user
-        kvPath: /serviceuser/data/dev/srvvedtaksfeed
   ingresses:
     - "https://vedtaksfeed.nais.preprod.local"
   env:
-    - name: KAFKA_BOOTSTRAP_SERVERS
-      value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443
     - name: KAFKA_CONSUMER_GROUP_ID
       value: tbd-vedtaksfeed-v1
     - name: KAFKA_RAPID_TOPIC
