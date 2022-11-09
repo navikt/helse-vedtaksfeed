@@ -68,7 +68,8 @@ fun main() {
                 val topicPartition = TopicPartition(environment.onpremVedtaksfeedtopic, 0)
                 onpremConsumer.assign(listOf(topicPartition))
                 onpremConsumer.seekToEnd(listOf(topicPartition))
-                val sisteOffset = onpremConsumer.position(topicPartition)
+                val sisteOffset = onpremConsumer.position(topicPartition) - 1 // subtraherer med 1 fordi vi får offset til _neste_ record, ikke siste
+                onpremConsumer.seekToBeginning(listOf(topicPartition))
                 var nåværendeOffset = -1L
                 do {
                     onpremConsumer.poll(Duration.ofSeconds(1)).forEach { record ->
