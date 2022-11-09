@@ -19,9 +19,12 @@ import no.nav.helse.rapids_rivers.RapidsConnection
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.URL
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -41,19 +44,50 @@ fun main() {
         .rateLimited(10, 1, TimeUnit.MINUTES)
         .build()
 
-    val vedtakproducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
+    val vedtakonpremProducer = KafkaProducer<String, Vedtak>(loadBaseConfig(environment, serviceUser).toProducerConfig())
+
+    val env = System.getenv()
+    val aivenConfig = KafkaConfig(
+        bootstrapServers = env.getValue("KAFKA_BROKERS"),
+        truststore = env.getValue("KAFKA_TRUSTSTORE_PATH"),
+        truststorePassword = env.getValue("KAFKA_CREDSTORE_PASSWORD"),
+        keystoreLocation = env["KAFKA_KEYSTORE_PATH"],
+        keystorePassword = env["KAFKA_CREDSTORE_PASSWORD"],
+    )
+    val vedtakaivenProducer = KafkaProducer(aivenConfig.producerConfig(), StringSerializer(), VedtakSerializer())
 
     RapidApplication.Builder(
         RapidApplication.RapidApplicationConfig.fromEnv(System.getenv())
     ).withKtorModule {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
-        setupRivers(vedtakproducer, environment.vedtaksfeedtopic)
+        register(object : RapidsConnection.StatusListener {
+            override fun onStartup(rapidsConnection: RapidsConnection) {
+                val onpremProps = loadBaseConfig(environment, serviceUser)
+                val onpremConsumer = KafkaConsumer<String, Vedtak>(onpremProps.toSeekingConsumer())
+                val topicPartition = TopicPartition(environment.onpremVedtaksfeedtopic, 0)
+                onpremConsumer.assign(listOf(topicPartition))
+                onpremConsumer.seekToEnd(listOf(topicPartition))
+                val sisteOffset = onpremConsumer.position(topicPartition)
+                var nåværendeOffset = -1L
+                do {
+                    onpremConsumer.poll(Duration.ofSeconds(1)).forEach { record ->
+                        nåværendeOffset = vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value())).get().offset()
+                    }
+                    log.info("sisteOffset=$sisteOffset, nåværendeOffset=$nåværendeOffset, gjenstående=${sisteOffset - nåværendeOffset}")
+                } while (nåværendeOffset < sisteOffset)
+            }
+        })
+        setupRivers { fødselsnummer, vedtak ->
+            val offsetOnprem = vedtakonpremProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
+            vedtakaivenProducer.send(ProducerRecord(environment.onpremVedtaksfeedtopic, fødselsnummer, vedtak)).get().offset().also { offsetAiven ->
+                check (offsetAiven == offsetOnprem)
+            }
+        }
     }
 }
 
-internal fun RapidsConnection.setupRivers(vedtakproducer: KafkaProducer<String, Vedtak>, vedtaksfeedtopic: String) {
-    val publisher: Publisher = { fødselsnummer, vedtak -> vedtakproducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset() }
+internal fun RapidsConnection.setupRivers(publisher: Publisher) {
     UtbetalingUtbetaltRiver(this, publisher)
     AnnullertRiverV1(this, publisher)
     start()
@@ -88,7 +122,7 @@ internal fun Application.vedtaksfeed(
 
     routing {
         authenticate {
-            feedApi(environment.vedtaksfeedtopic, vedtaksfeedconsumer)
+            feedApi(environment.onpremVedtaksfeedtopic, vedtaksfeedconsumer)
         }
     }
 }
