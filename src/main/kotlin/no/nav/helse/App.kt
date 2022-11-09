@@ -27,6 +27,7 @@ import java.net.URL
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
 
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -62,7 +63,7 @@ fun main() {
         vedtaksfeed(environment, jwkProvider, loadBaseConfig(environment, serviceUser))
     }.build().apply {
         register(object : RapidsConnection.StatusListener {
-            override fun onStartup(rapidsConnection: RapidsConnection) {
+            override fun onReady(rapidsConnection: RapidsConnection) {
                 val onpremProps = loadBaseConfig(environment, serviceUser)
                 val onpremConsumer = KafkaConsumer<String, Vedtak>(onpremProps.toSeekingConsumer())
                 val topicPartition = TopicPartition(environment.onpremVedtaksfeedtopic, 0)
@@ -72,11 +73,20 @@ fun main() {
                 onpremConsumer.seekToBeginning(listOf(topicPartition))
                 var nåværendeOffset = -1L
                 do {
-                    onpremConsumer.poll(Duration.ofSeconds(1)).forEach { record ->
-                        nåværendeOffset = vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value())).get().offset()
-                    }
+                        onpremConsumer.poll(Duration.ofSeconds(1))
+                            .map { record ->
+                                vedtakaivenProducer.send(ProducerRecord(environment.aivenVedtaksfeedtopic, record.key(), record.value()))
+                            }
+                            .lastOrNull()
+                            ?.get()
+                            ?.offset()
+                            ?.also { nåværendeOffset = it }
                     log.info("sisteOffset=$sisteOffset, nåværendeOffset=$nåværendeOffset, gjenstående=${sisteOffset - nåværendeOffset}")
                 } while (nåværendeOffset < sisteOffset)
+                onpremConsumer.seekToEnd(listOf(topicPartition))
+                val oppdatertSisteOffset = onpremConsumer.position(topicPartition) - 1
+                log.info("sisteOffset=$sisteOffset, oppdatertSisteOffset=$oppdatertSisteOffset")
+                if (oppdatertSisteOffset != sisteOffset) exitProcess(1)
             }
         })
         setupRivers { fødselsnummer, vedtak ->
