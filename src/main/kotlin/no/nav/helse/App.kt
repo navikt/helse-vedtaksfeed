@@ -39,8 +39,6 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
 fun main() {
-    val environment = setUpEnvironment()
-
     val env = System.getenv()
     val aivenConfig = KafkaConfig(
         bootstrapServers = env.getValue("KAFKA_BROKERS"),
@@ -51,9 +49,10 @@ fun main() {
     )
 
     if (true == System.getenv("KUN_KTOR_API")?.equals("true", true)) {
-        return apiOnly(env, environment, aivenConfig)
+        return apiOnly(env, aivenConfig)
     }
 
+    val environment = setUpEnvironment()
     val jwkProvider = JwkProviderBuilder(URL(environment.jwksUrl))
         .cached(10, 24, TimeUnit.HOURS)
         .rateLimited(10, 1, TimeUnit.MINUTES)
@@ -72,7 +71,7 @@ fun main() {
     }
 }
 
-private fun apiOnly(env: Map<String, String>, environment: Environment, aivenConfig: KafkaConfig) {
+private fun apiOnly(env: Map<String, String>, aivenConfig: KafkaConfig) {
     val azureConfig = AzureAdAppConfig(
         clientId = env.getValue("AZURE_APP_CLIENT_ID"),
         configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
@@ -92,7 +91,7 @@ private fun apiOnly(env: Map<String, String>, environment: Environment, aivenCon
 
             routing {
                 authenticate {
-                    feedApi(environment.vedtaksfeedtopic, KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()))
+                    feedApi("tbd.infotrygd.vedtaksfeed.v1", KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()))
                 }
             }
         }
