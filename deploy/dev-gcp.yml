@@ -36,8 +36,8 @@ spec:
   accessPolicy:
     inbound:
       rules:
-        - application: infotrygd-feed-konsument
-          namespace: infotrygd
+        - application: infotrygd-feed-proxy
+          namespace: teamfamilie
           cluster: dev-fss
   secureLogs:
     enabled: true
