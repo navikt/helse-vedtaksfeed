@@ -10,13 +10,13 @@ spec:
   port: 8080
   liveness:
     path: isalive
-    initialDelay: 20
+    initialDelay: 10
   readiness:
     path: isready
-    initialDelay: 20
+    initialDelay: 10
   resources:
     limits:
-      cpu: 200m
+      cpu: 2000m
       memory: 512Mi
     requests:
       cpu: 50m
@@ -29,7 +29,7 @@ spec:
     enabled: true
     path: /metrics
   kafka:
-    pool: nav-dev
+    pool: nav-prod
   azure:
       application:
           enabled: true
