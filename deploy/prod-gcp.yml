@@ -1,0 +1,48 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: vedtaksfeed
+  namespace: tbd
+  labels:
+    team: tbd
+spec:
+  image: {{image}}
+  port: 8080
+  liveness:
+    path: isalive
+    initialDelay: 20
+  readiness:
+    path: isready
+    initialDelay: 20
+  resources:
+    limits:
+      cpu: 200m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  replicas:
+    min: 1
+    max: 1
+    cpuThresholdPercentage: 90
+  prometheus:
+    enabled: true
+    path: /metrics
+  kafka:
+    pool: nav-dev
+  azure:
+      application:
+          enabled: true
+  accessPolicy:
+    inbound:
+      rules:
+        - application: infotrygd-feed-konsument
+          namespace: infotrygd
+          cluster: prod-fss
+  secureLogs:
+    enabled: true
+  ingresses:
+    - "https://vedtaksfeed.intern.nav.no"
+  env:
+    - name: KUN_KTOR_API
+      value: "true"
