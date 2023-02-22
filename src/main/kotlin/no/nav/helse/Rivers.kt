@@ -32,6 +32,8 @@ class UtbetalingUtbetaltRiver(
                     "korrelasjonsId",
                     "maksdato",
                     "gjenståendeSykedager",
+                    "arbeidsgiverOppdrag.linjer",
+                    "personOppdrag.linjer",
                 )
             }
         }.register(this)
@@ -46,12 +48,17 @@ class UtbetalingUtbetaltRiver(
         try {
             val utbetalingId = packet["utbetalingId"].asText()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
+            val førsteDager = listOfNotNull(
+                packet["arbeidsgiverOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate(),
+                packet["personOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate()
+            )
+            val førsteStønadsdag = førsteDager.minOf { it }
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
                 aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
-                førsteStønadsdag = packet["fom"].asLocalDate(),
+                førsteStønadsdag = førsteStønadsdag,
                 sisteStønadsdag = packet.tom(),
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()

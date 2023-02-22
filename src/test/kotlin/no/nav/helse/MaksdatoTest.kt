@@ -61,7 +61,17 @@ private val utbetalingUtbetalt = """
       "@opprettet": "2020-12-14T15:38:14.419655",
       "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
-      "organisasjonsnummer": "999999999"
+      "organisasjonsnummer": "999999999",
+      "arbeidsgiverOppdrag": {
+        "linjer": [
+          {
+            "fom": "2020-08-09"
+          }
+        ]
+      },
+      "personOppdrag": {
+        "linjer": []
+      }
   }
 """
 
@@ -83,7 +93,17 @@ private val utbetalingUtbetaltUtenGjenståendeDager = """
       "@opprettet": "2020-12-14T15:38:14.419655",
       "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
-      "organisasjonsnummer": "999999999"
+      "organisasjonsnummer": "999999999",
+      "arbeidsgiverOppdrag": {
+        "linjer": [
+          {
+            "fom": "2020-08-09"
+          }
+        ]
+      },
+      "personOppdrag": {
+        "linjer": []
+      }
   }
 """
 

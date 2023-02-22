@@ -329,7 +329,7 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
     {
       "utbetalingId": "b440fa98-3e1a-11eb-b378-0242ac130002",
       "type": "$utbetalingtype",
-      "fom": "2020-08-09",
+      "fom": "2020-08-01",
       "tom": "2020-08-24",
       "maksdato": "2020-12-20",
       "gjenståendeSykedager": ${248 - stønadsdager},
@@ -341,7 +341,17 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
       "@opprettet": "2020-12-14T15:38:14.419655",
       "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
-      "organisasjonsnummer": "999999999"
+      "organisasjonsnummer": "999999999",
+      "arbeidsgiverOppdrag": {
+        "linjer": [
+          {
+            "fom": "2020-08-09"
+          }
+        ]
+      },
+      "personOppdrag": {
+        "linjer": []
+      }
   }
 """
 
@@ -350,7 +360,7 @@ private fun utbetalingTilBruker() = """
     {
       "utbetalingId": "96e819b7-7dc8-4125-8a5d-b5b6d7f5bc5f",
       "type": "UTBETALING",
-      "fom": "2021-08-17",
+      "fom": "2021-08-16",
       "tom": "2021-08-31",
       "maksdato": "2021-12-20",
       "gjenståendeSykedager": 237,
@@ -362,6 +372,16 @@ private fun utbetalingTilBruker() = """
       "@opprettet": "2021-11-11T10:56:09.746062805",
       "fødselsnummer": "09047606370",
       "aktørId": "2336848909974",
-      "organisasjonsnummer": "972674818"
+      "organisasjonsnummer": "972674818",
+      "arbeidsgiverOppdrag": {
+        "linjer": [
+          {
+            "fom": "2021-08-17"
+          }
+        ]
+      },
+      "personOppdrag": {
+        "linjer": []
+      }
     }
 """
