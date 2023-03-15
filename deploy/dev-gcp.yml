@@ -43,6 +43,3 @@ spec:
     enabled: true
   ingresses:
     - "https://vedtaksfeed.dev.intern.nav.no"
-  env:
-    - name: KUN_KTOR_API
-      value: "true"
