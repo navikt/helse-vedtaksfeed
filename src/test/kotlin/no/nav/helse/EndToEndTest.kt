@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import com.auth0.jwk.JwkProviderBuilder
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
@@ -164,8 +163,8 @@ internal class EndToEndTest {
         testBlock: String.() -> Unit = {}
     ) {
         val token = jwtStub.createTokenFor(
-            subject = "srvInfot",
-            audience = "spokelse_azure_ad_app_id"
+            subject = infotrygClientId,
+            audience = vedtaksfeedAudience
         )
 
         val connection = appBaseUrl.handleRequest(HttpMethod.Get, this,
@@ -209,6 +208,8 @@ internal class EndToEndTest {
     private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
     private lateinit var jwtStub: JwtStub
 
+    private val infotrygClientId = "my_cool_client_id"
+    private val vedtaksfeedAudience = "vedtaksfeed_client_id"
     private val randomPort = ServerSocket(0).use { it.localPort }
     private val jwtIssuer = mockAuthentication()
 
@@ -229,14 +230,14 @@ internal class EndToEndTest {
             port = randomPort
         }
         module {
-            val testEnv = Environment(
-                jwksUrl = "${wireMockServer.baseUrl()}/jwks",
-                jwtIssuer = jwtIssuer
+            val azureConfig = AzureAdAppConfig(
+                clientId = vedtaksfeedAudience,
+                configurationUrl = "${wireMockServer.baseUrl()}/config"
             )
             vedtaksfeed(
-                testEnv,
-                JwkProviderBuilder(URL(testEnv.jwksUrl)).build(),
-                KafkaConsumer(loadTestConfig().toSeekingConsumer(), StringDeserializer(), VedtakDeserializer())
+                internTopic,
+                KafkaConsumer(loadTestConfig().toSeekingConsumer(), StringDeserializer(), VedtakDeserializer()),
+                azureConfig
             )
         }
     })
