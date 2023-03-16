@@ -43,6 +43,7 @@ spec:
     enabled: true
   ingresses:
     - "https://vedtaksfeed.dev.intern.nav.no"
+    - "https://vedtaksfeed.intern.dev.nav.no"
   env:
   - name: KAFKA_CONSUMER_GROUP_ID
     value: tbd-vedtaksfeed-v1
