@@ -13,7 +13,10 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.cio.*
+import io.ktor.server.plugins.callid.*
+import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import no.nav.helse.rapids_rivers.KtorBuilder
 import no.nav.helse.rapids_rivers.RapidApplication
@@ -25,9 +28,11 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.*
 
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -35,6 +40,7 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
+private val httpTraceLog = LoggerFactory.getLogger("tjenestekall")
 
 fun main() {
     val vedtaksfeedtopic = "tbd.infotrygd.vedtaksfeed.v1"
@@ -76,13 +82,23 @@ internal fun Application.vedtaksfeed(
     azureConfig: AzureAdAppConfig,
 ) {
     installJacksonFeature()
-
+    install(CallId) {
+        header("callId")
+        verify { it.isNotEmpty() }
+        generate { UUID.randomUUID().toString() }
+    }
+    install(CallLogging) {
+        logger = httpTraceLog
+        level = Level.INFO
+        callIdMdc("callId")
+        filter { call -> call.request.path().startsWith("/feed") }
+    }
+    requestResponseTracing(httpTraceLog)
     install(Authentication) {
         jwt {
             azureConfig.configureVerification(this)
         }
     }
-
     routing {
         authenticate {
             feedApi(topic, consumer)

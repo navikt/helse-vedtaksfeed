@@ -8,6 +8,7 @@
         </layout>
     </appender>
 
+    <logger name="io.ktor.auth.jwt" level="TRACE" />
     <logger name="kafka" level="INFO"/>
     <logger name="org.apache.zookeeper" level="ERROR"/>
     <logger name="org.apache.kafka" level="INFO"/>

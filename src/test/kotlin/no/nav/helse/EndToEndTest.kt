@@ -167,6 +167,8 @@ internal class EndToEndTest {
             audience = vedtaksfeedAudience
         )
 
+        log.info("sender request til $this med token=Bearer $token")
+
         val connection = appBaseUrl.handleRequest(HttpMethod.Get, this,
             builder = {
                 setRequestProperty(HttpHeaders.Authorization, "Bearer $token")

@@ -14,18 +14,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 
-fun setUpEnvironment() =
-    Environment(
-        jwksUrl = System.getenv("JWKS_URL"),
-        jwtIssuer = System.getenv("JWT_ISSUER")
-    )
-
-data class Environment(
-    val jwksUrl: String,
-    val jwtIssuer: String,
-    val vedtaksfeedtopic: String = "tbd.infotrygd.vedtaksfeed.v1"
-)
-
 internal class KafkaConfig(
     private val bootstrapServers: String,
     private val truststore: String? = null,

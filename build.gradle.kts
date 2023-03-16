@@ -1,10 +1,10 @@
 val junitJupiterVersion = "5.6.3"
-val ktorVersion = "2.0.1"
-val rapidsAndRiversVersion = "2022.05.25-08.39.8025c775ad8e"
+val ktorVersion = "2.2.3"
+val rapidsAndRiversVersion = "2023031511211678875716.e6e2c9250860"
 val wireMockVersion = "2.33.2"
 
 plugins {
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.8.10"
 }
 
 group = "no.nav.helse"
@@ -19,6 +19,7 @@ dependencies {
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-jackson:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-id:$ktorVersion")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
     implementation("commons-codec:commons-codec:1.15")
 

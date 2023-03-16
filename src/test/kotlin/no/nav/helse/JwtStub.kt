@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
+import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
@@ -45,8 +46,8 @@ class JwtStub(private val issuer: String, private val wireMockServer: WireMockSe
             "kty": "RSA",
             "alg": "RS256",
             "kid": "key-1234",
-            "e": "${String(Base64.getEncoder().encode(publicKey.publicExponent.toByteArray()))}",
-            "n": "${String(Base64.getEncoder().encode(publicKey.modulus.toByteArray()))}"
+            "e": "${String(Base64.getUrlEncoder().encode(publicKey.publicExponent.toByteArray()))}",
+            "n": "${String(Base64.getUrlEncoder().encode(publicKey.modulus.toByteArray()))}"
         }
     ]
 }
