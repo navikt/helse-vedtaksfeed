@@ -90,6 +90,7 @@ internal fun Application.vedtaksfeed(
     install(CallLogging) {
         logger = httpTraceLog
         level = Level.INFO
+        disableDefaultColors()
         callIdMdc("callId")
         filter { call -> call.request.path().startsWith("/feed") }
     }
