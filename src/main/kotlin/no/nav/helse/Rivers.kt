@@ -65,7 +65,12 @@ class UtbetalingUtbetaltRiver(
             )
                 .also { if (it.forbrukteStønadsdager > 5_000) log.info("Utbetalt til maksdato i ny løsning for ${it.aktørId}") }
                 .republish(vedtaksfeedPublisher)
-                .also { log.info("Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
+                .also { offset->
+                    "Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $offset".also {
+                        log.info(it)
+                        tjenestekallLog.info(it)
+                    }
+                }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
@@ -107,7 +112,7 @@ class AnnullertRiverV1(
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
             val fom = packet["fom"].asLocalDate()
             val tom = packet["tom"].asLocalDate()
-            Vedtak(
+            val offset = Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),
                 aktørId = packet["aktørId"].textValue(),
@@ -117,7 +122,10 @@ class AnnullertRiverV1(
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = 0
             ).republish(vedtaksfeedPublisher)
-                .also { log.info("Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $it") }
+            "Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $offset".also {
+                log.info(it)
+                tjenestekallLog.info(it)
+            }
         } catch (e: Exception) {
             tjenestekallLog.error("Melding feilet ved konvertering til internt format:\n${packet.toJson()}")
             throw e
