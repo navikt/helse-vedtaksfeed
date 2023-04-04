@@ -34,7 +34,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
 
-        "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest. Siste sendte sekvensnummer er ${feed.elementer.last().sekvensId} callId=${call.callId}".also {
+        "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest. Siste sendte sekvensnummer er ${feed.elementer.lastOrNull()?.sekvensId ?: "N/A"} callId=${call.callId}".also {
             log.info(it)
             sikkerlogg.info(it)
         }
