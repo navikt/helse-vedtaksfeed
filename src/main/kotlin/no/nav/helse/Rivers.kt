@@ -81,7 +81,7 @@ class AnnullertRiverV1(
     init {
         River(rapidsConnection).apply {
             validate {
-                it.requireValue("@event_name", "utbetaling_annullert")
+                it.demandValue("@event_name", "utbetaling_annullert")
                 it.require("@opprettet", JsonNode::asLocalDateTime)
                 it.requireKey(
                     "fødselsnummer",
@@ -94,6 +94,11 @@ class AnnullertRiverV1(
                 )
             }
         }.register(this)
+    }
+
+    override fun onError(problems: MessageProblems, context: MessageContext) {
+        tjenestekallLog.error("Forstod ikke innkommende melding (utbetaling_annullert): ${problems.toExtendedReport()}")
+        log.error("Forstod ikke innkommende melding (utbetaling_annullert): $problems")
     }
 
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
