@@ -1,5 +1,7 @@
 package no.nav.helse
 
+import io.ktor.server.application.*
+import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerAnnullert_v1
@@ -7,7 +9,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
+import org.slf4j.LoggerFactory
 import java.time.Duration
+
+private val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -29,8 +34,11 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
 
+        "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest. Siste sendte sekvensnummer er ${feed.elementer.last().sekvensId} callId=${call.callId}".also {
+            log.info(it)
+            sikkerlogg.info(it)
+        }
         context.respond(feed)
-            .also { log.info("Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest") }
     }
 }
 
