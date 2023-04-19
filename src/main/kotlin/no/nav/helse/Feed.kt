@@ -16,6 +16,7 @@ class Feed(
     ) {
         class Innhold(
             val aktoerId: String,
+            val fnr: String,
             val foersteStoenadsdag: LocalDate,
             val sisteStoenadsdag: LocalDate,
             val utbetalingsreferanse: String,

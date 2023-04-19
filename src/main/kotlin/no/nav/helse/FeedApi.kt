@@ -56,6 +56,7 @@ private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
             metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
             innhold = Feed.Element.Innhold(
                 aktoerId = vedtak.aktørId,
+                fnr = vedtak.fødselsnummer,
                 foersteStoenadsdag = vedtak.førsteStønadsdag,
                 sisteStoenadsdag = vedtak.sisteStønadsdag,
                 utbetalingsreferanse = vedtak.førsteFraværsdag,
