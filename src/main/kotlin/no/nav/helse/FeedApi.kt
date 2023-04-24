@@ -28,7 +28,10 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         consumer.seek(topicPartition, seekTil)
 
         val records = 0.until(ANTALL_POLL)
-            .flatMap { consumer.poll(Duration.ofMillis(500)) }
+            .flatMap { index -> consumer.poll(Duration.ofMillis(500)).also {
+                sikkerlogg.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                log.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+            } }
             .takeUnless { it.size == 1 && sisteLest == 0L && it.first().offset() == 0L }
             ?: emptyList()
         val feed = records
