@@ -37,7 +37,7 @@ internal class EndToEndTest {
 
     @Test
     fun `får tilbake elementer fra feed`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertTrue(feed.elementer.isNotEmpty())
@@ -47,7 +47,7 @@ internal class EndToEndTest {
 
     @Test
     fun `får tilbake elementer fra feed med antall`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=10".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(10, feed.elementer.size)
@@ -79,7 +79,7 @@ internal class EndToEndTest {
 
     @Test
     fun `kan spørre flere ganger og få samme resultat`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             val url = "/feed?sistLesteSekvensId=0&maxAntall=10"
             url.httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -96,7 +96,7 @@ internal class EndToEndTest {
 
     @Test
     fun annulleringV1() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
 
@@ -112,7 +112,7 @@ internal class EndToEndTest {
 
     @Test
     fun utbetalingUtbetaltTest() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=1&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -128,7 +128,7 @@ internal class EndToEndTest {
 
     @Test
     fun `utbetaling utbetalt med et hint av revurdering`() {
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -144,7 +144,7 @@ internal class EndToEndTest {
 
     @Test
     fun `les ut utbetaling til bruker`(){
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -172,6 +172,7 @@ internal class EndToEndTest {
         val connection = appBaseUrl.handleRequest(HttpMethod.Get, this,
             builder = {
                 setRequestProperty(HttpHeaders.Authorization, "Bearer $token")
+                readTimeout = 10000
             })
 
         assertEquals(expectedStatus.value, connection.responseCode)

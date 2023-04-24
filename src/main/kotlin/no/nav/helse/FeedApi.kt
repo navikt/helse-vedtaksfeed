@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory
 import java.time.Duration
 
 private val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
+private const val ANTALL_POLL = 5
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
@@ -23,13 +24,14 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
-        consumer.poll(Duration.ofMillis(1000))
         val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
         consumer.seek(topicPartition, seekTil)
-        val records = consumer.poll(Duration.ofMillis(1000))
-        val feed = (records
-            .takeUnless { records.count() == 1 && sisteLest == 0L && records.first().offset() == 0L }
-            ?: ConsumerRecords.empty())
+
+        val records = 0.until(ANTALL_POLL)
+            .flatMap { consumer.poll(Duration.ofMillis(500)) }
+            .takeUnless { it.size == 1 && sisteLest == 0L && it.first().offset() == 0L }
+            ?: emptyList()
+        val feed = records
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
