@@ -39,6 +39,9 @@ spec:
         - application: infotrygd-feed-proxy
           namespace: teamfamilie
           cluster: prod-fss
+        - application: infotrygd-feed-proxy-v2
+          namespace: infotrygd
+          cluster: prod-fss
   secureLogs:
     enabled: true
   ingresses:
