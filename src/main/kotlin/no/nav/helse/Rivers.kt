@@ -3,7 +3,6 @@ package no.nav.helse
 import com.fasterxml.jackson.databind.JsonNode
 import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
-import java.time.LocalDate
 import java.util.*
 
 private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
@@ -31,10 +30,16 @@ class UtbetalingUtbetaltRiver(
                     "stønadsdager",
                     "korrelasjonsId",
                     "maksdato",
-                    "gjenståendeSykedager",
-                    "arbeidsgiverOppdrag.linjer",
-                    "personOppdrag.linjer",
+                    "gjenståendeSykedager"
                 )
+                it.requireArray("arbeidsgiverOppdrag.linjer") {
+                    require("fom", JsonNode::asLocalDate)
+                    require("tom", JsonNode::asLocalDate)
+                }
+                it.requireArray( "personOppdrag.linjer") {
+                    require("fom", JsonNode::asLocalDate)
+                    require("tom", JsonNode::asLocalDate)
+                }
             }
         }.register(this)
     }
@@ -48,18 +53,14 @@ class UtbetalingUtbetaltRiver(
         try {
             val utbetalingId = packet["utbetalingId"].asText()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
-            val førsteDager = listOfNotNull(
-                packet["arbeidsgiverOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate(),
-                packet["personOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate()
-            )
-            val førsteStønadsdag = førsteDager.minOf { it }
+
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
                 aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
-                førsteStønadsdag = førsteStønadsdag,
-                sisteStønadsdag = packet.tom(),
+                førsteStønadsdag = packet.førsteStønadsdag,
+                sisteStønadsdag = packet.sisteStønadsdag,
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
             )
@@ -76,6 +77,16 @@ class UtbetalingUtbetaltRiver(
             throw e
         }
     }
+
+    private val JsonMessage.førsteStønadsdag get() = listOfNotNull(
+        this["arbeidsgiverOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate(),
+        this["personOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate()
+    ).min()
+
+    private val JsonMessage.sisteStønadsdag get() = listOfNotNull(
+        this["arbeidsgiverOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate(),
+        this["personOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate()
+    ).max()
 }
 
 class AnnullertRiverV1(
@@ -136,8 +147,6 @@ class AnnullertRiverV1(
 private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
     korrelasjonsId to korrelasjonsId.base32Encode()
 }
-
-private fun JsonMessage.tom(): LocalDate = minOf(get("tom").asLocalDate(), get("maksdato").asLocalDate())
 
 /**
  * Infotrygd har implementert visning av "utbetalt til maksdato i ny løsning" i skjermbildet sitt (GE VL) på følgende måte:

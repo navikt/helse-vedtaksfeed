@@ -1,11 +1,9 @@
 package no.nav.helse
 
-import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.time.LocalDate
 
 class MaksdatoTest {
 
@@ -32,16 +30,6 @@ class MaksdatoTest {
         assertEquals(26, interneVedtak[0].forbrukteStønadsdager)
     }
 
-    @Test
-    fun `setter TOM til maksdato hvis denne nås i perioden`() {
-        rapid.sendTestMessage(utbetalingUtbetaltUtenGjenståendeDager)
-        val vedtak = interneVedtak[0]
-        assertEquals(SykepengerUtbetalt_v1, vedtak.type)
-        assertEquals(LocalDate.of(2020, 8, 9), vedtak.førsteStønadsdag)
-        assertEquals(LocalDate.of(2020, 8, 20), vedtak.sisteStønadsdag)
-        assertEquals("XWZFMAISNZFMFO33LGFZ5XMDQY", vedtak.førsteFraværsdag)
-        assertEquals(LocalDate.of(2020, 12, 14), vedtak.opprettet.toLocalDate())
-    }
 }
 
 @Language("JSON")
@@ -65,7 +53,8 @@ private val utbetalingUtbetalt = """
       "arbeidsgiverOppdrag": {
         "linjer": [
           {
-            "fom": "2020-08-09"
+            "fom": "2020-08-09",
+            "tom": "2020-08-24"
           }
         ]
       },
@@ -97,7 +86,8 @@ private val utbetalingUtbetaltUtenGjenståendeDager = """
       "arbeidsgiverOppdrag": {
         "linjer": [
           {
-            "fom": "2020-08-09"
+            "fom": "2020-08-09",
+            "tom": "2020-08-24"
           }
         ]
       },

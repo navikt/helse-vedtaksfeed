@@ -117,7 +117,7 @@ internal class EndToEndTest {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
@@ -133,7 +133,7 @@ internal class EndToEndTest {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2020, 8, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
                 assertEquals(79, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
@@ -149,7 +149,7 @@ internal class EndToEndTest {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2021, 8, 17), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2021, 8, 31), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(LocalDate.of(2021, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(11, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("WHQQO7GYFZBMPBVJU7H2B2BWTA", feed.elementer[0].innhold.utbetalingsreferanse)
@@ -349,12 +349,18 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
       "arbeidsgiverOppdrag": {
         "linjer": [
           {
-            "fom": "2020-08-09"
+            "fom": "2020-08-09",
+            "tom": "2020-08-24"
           }
         ]
       },
       "personOppdrag": {
-        "linjer": []
+        "linjer": [
+          {
+            "fom": "2020-08-09",
+            "tom": "2020-09-01"
+          }
+        ]
       }
   }
 """
@@ -380,7 +386,8 @@ private fun utbetalingTilBruker() = """
       "arbeidsgiverOppdrag": {
         "linjer": [
           {
-            "fom": "2021-08-17"
+            "fom": "2021-08-17",
+            "tom": "2021-09-01"
           }
         ]
       },
