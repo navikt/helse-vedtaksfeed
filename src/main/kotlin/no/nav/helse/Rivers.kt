@@ -87,6 +87,7 @@ class UtbetalingUtbetaltRiver(
         this["arbeidsgiverOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate(),
         this["personOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate()
     ).max()
+
 }
 
 class AnnullertRiverV1(
