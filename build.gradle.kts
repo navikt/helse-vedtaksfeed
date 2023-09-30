@@ -1,10 +1,10 @@
-val junitJupiterVersion = "5.6.3"
-val ktorVersion = "2.2.3"
-val rapidsAndRiversVersion = "2023031511211678875716.e6e2c9250860"
+val junitJupiterVersion = "5.10.0"
+val ktorVersion = "2.3.4"
+val rapidsAndRiversVersion = "2023093008351696055717.ffdec6aede3d"
 val wireMockVersion = "2.33.2"
 
 plugins {
-    kotlin("jvm") version "1.8.10"
+    kotlin("jvm") version "1.9.10"
 }
 
 group = "no.nav.helse"
@@ -73,9 +73,8 @@ tasks {
 
         doLast {
             configurations.runtimeClasspath.get().forEach {
-                val file = File("$buildDir/libs/${it.name}")
-                if (!file.exists())
-                    it.copyTo(file)
+                val file = File("${layout.buildDirectory.get()}/libs/${it.name}")
+                if (!file.exists()) it.copyTo(file)
             }
         }
     }
