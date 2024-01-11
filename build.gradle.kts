@@ -1,18 +1,27 @@
 val junitJupiterVersion = "5.10.0"
-val ktorVersion = "2.3.4"
-val rapidsAndRiversVersion = "2023093008351696055717.ffdec6aede3d"
+val ktorVersion = "2.3.7"
+val rapidsAndRiversVersion = "2024010209171704183456.6d035b91ffb4"
 val wireMockVersion = "2.33.2"
 
 plugins {
-    kotlin("jvm") version "1.9.10"
+    kotlin("jvm") version "1.9.22"
 }
 
-group = "no.nav.helse"
-
 repositories {
+    val githubPassword: String? by project
     mavenCentral()
-    maven("https://jitpack.io")
-    maven("https://packages.confluent.io/maven/")
+    /* ihht. https://github.com/navikt/utvikling/blob/main/docs/teknisk/Konsumere%20biblioteker%20fra%20Github%20Package%20Registry.md
+        så plasseres github-maven-repo (med autentisering) før nav-mirror slik at github actions kan anvende førstnevnte.
+        Det er fordi nav-mirroret kjører i Google Cloud og da ville man ellers fått unødvendige utgifter til datatrafikk mellom Google Cloud og GitHub
+     */
+    maven {
+        url = uri("https://maven.pkg.github.com/navikt/maven-release")
+        credentials {
+            username = "x-access-token"
+            password = githubPassword
+        }
+    }
+    maven("https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
 }
 
 dependencies {
@@ -25,9 +34,8 @@ dependencies {
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     testImplementation("no.nav:kafka-embedded-env:3.2.1") {
         constraints {
@@ -54,11 +62,10 @@ dependencies {
 }
 
 tasks {
-    compileKotlin {
-        kotlinOptions.jvmTarget = "17"
-    }
-    compileTestKotlin {
-        kotlinOptions.jvmTarget = "17"
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
     }
 
     withType<Jar> {
