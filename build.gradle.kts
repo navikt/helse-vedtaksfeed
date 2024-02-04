@@ -1,6 +1,6 @@
 val junitJupiterVersion = "5.10.0"
-val ktorVersion = "2.3.7"
-val rapidsAndRiversVersion = "2024010209171704183456.6d035b91ffb4"
+val ktorVersion = "2.3.8"
+val rapidsAndRiversVersion = "2024020421191707077994.337b557194f1"
 val wireMockVersion = "2.33.2"
 
 plugins {
@@ -38,7 +38,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    testImplementation("no.nav:kafka-embedded-env:3.2.1") {
+    testImplementation("no.nav:kafka-embedded-env:3.2.4") {
         constraints {
             implementation("io.netty:netty-common") {
                 version { require("4.1.80.Final") }

@@ -12,15 +12,16 @@ import io.ktor.serialization.jackson.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
-import io.ktor.server.cio.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
-import no.nav.helse.rapids_rivers.KtorBuilder
+import no.nav.helse.rapids_rivers.AivenConfig
 import no.nav.helse.rapids_rivers.RapidApplication
 import no.nav.helse.rapids_rivers.RapidsConnection
+import no.nav.helse.rapids_rivers.defaultNaisApplication
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -45,14 +46,8 @@ private val httpTraceLog = LoggerFactory.getLogger("tjenestekall")
 fun main() {
     val vedtaksfeedtopic = "tbd.infotrygd.vedtaksfeed.v1"
     val env = System.getenv()
-    val aivenConfig = KafkaConfig(
-        bootstrapServers = env.getValue("KAFKA_BROKERS"),
-        truststore = env.getValue("KAFKA_TRUSTSTORE_PATH"),
-        truststorePassword = env.getValue("KAFKA_CREDSTORE_PASSWORD"),
-        keystoreLocation = env["KAFKA_KEYSTORE_PATH"],
-        keystorePassword = env["KAFKA_CREDSTORE_PASSWORD"],
-    )
 
+    val config = AivenConfig.default
     RapidApplication.Builder(
         RapidApplication.RapidApplicationConfig.fromEnv(System.getenv())
     ).withKtorModule {
@@ -60,9 +55,11 @@ fun main() {
             clientId = env.getValue("AZURE_APP_CLIENT_ID"),
             configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
         )
-        vedtaksfeed(vedtaksfeedtopic, KafkaConsumer(aivenConfig.consumerConfig(), StringDeserializer(), VedtakDeserializer()), azureConfig)
+        vedtaksfeed(vedtaksfeedtopic, KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties().apply {
+            put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+        }), StringDeserializer(), VedtakDeserializer()), azureConfig)
     }.build().apply {
-        val vedtakaivenProducer = KafkaProducer(aivenConfig.producerConfig(), StringSerializer(), VedtakSerializer())
+        val vedtakaivenProducer = KafkaProducer(config.producerConfig(Properties()), StringSerializer(), VedtakSerializer())
         setupRivers { fødselsnummer, vedtak ->
             log.info("publiserer vedtak på feed-topic")
             vedtakaivenProducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
