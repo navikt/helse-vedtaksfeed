@@ -1,6 +1,6 @@
 val junitJupiterVersion = "5.10.0"
 val ktorVersion = "2.3.8"
-val rapidsAndRiversVersion = "2024020422121707081126.d834a5d05bb2"
+val rapidsAndRiversVersion = "2024020507581707116327.1c34df474331"
 val wireMockVersion = "2.33.2"
 
 plugins {
