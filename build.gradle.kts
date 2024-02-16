@@ -1,4 +1,4 @@
-val junitJupiterVersion = "5.10.0"
+val junitJupiterVersion = "5.10.2"
 val ktorVersion = "2.3.8"
 val rapidsAndRiversVersion = "2024020507581707116327.1c34df474331"
 val wireMockVersion = "2.33.2"
