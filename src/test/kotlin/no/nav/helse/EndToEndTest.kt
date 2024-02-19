@@ -9,6 +9,7 @@ import io.ktor.server.cio.*
 import io.ktor.server.engine.*
 import no.nav.common.KafkaEnvironment
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
+import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -19,6 +20,7 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -34,9 +36,16 @@ import java.util.concurrent.TimeUnit
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class EndToEndTest {
+    private lateinit var internVedtakProducer: KafkaProducer<String, Vedtak>
+    private val rapid = TestRapid().apply {
+        setupRivers { fødselsnummer, vedtak ->
+            internVedtakProducer.send(ProducerRecord(internTopic, fødselsnummer, vedtak)).get().offset()
+        }
+    }
 
     @Test
     fun `får tilbake elementer fra feed`() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -47,6 +56,7 @@ internal class EndToEndTest {
 
     @Test
     fun `får tilbake elementer fra feed med antall`() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=10".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -79,6 +89,7 @@ internal class EndToEndTest {
 
     @Test
     fun `kan spørre flere ganger og få samme resultat`() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             val url = "/feed?sistLesteSekvensId=0&maxAntall=10"
             url.httpGet {
@@ -96,6 +107,7 @@ internal class EndToEndTest {
 
     @Test
     fun annulleringV1() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -112,6 +124,7 @@ internal class EndToEndTest {
 
     @Test
     fun utbetalingUtbetaltTest() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=1&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -128,6 +141,7 @@ internal class EndToEndTest {
 
     @Test
     fun `utbetaling utbetalt med et hint av revurdering`() {
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -144,6 +158,7 @@ internal class EndToEndTest {
 
     @Test
     fun `les ut utbetaling til bruker`(){
+        setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
@@ -289,15 +304,23 @@ internal class EndToEndTest {
     fun setup() {
         embeddedKafkaEnvironment.start()
         appBaseUrl = "http://localhost:$randomPort"
-
-        val rapid = TestRapid().apply {
-            val internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-            setupRivers { fødselsnummer, vedtak ->
-                internVedtakProducer.send(ProducerRecord(internTopic, fødselsnummer, vedtak)).get().offset()
-            }
-        }
+        internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
 
         ktor.start(false)
+    }
+    @AfterEach
+    fun reset() {
+        rapid.reset()
+        embeddedKafkaEnvironment.adminClient?.use { adminClient ->
+
+            adminClient.deleteTopics(topicInfos.map { it.name })
+            adminClient.createTopics(topicInfos.map {
+                NewTopic(it.name, it.partitions, 1)
+            })
+        }
+    }
+
+    private fun setupTestData(rapid: TestRapid) {
         repeat(100) {
             rapid.sendTestMessage(utbetalingUtbetalt())
         }
