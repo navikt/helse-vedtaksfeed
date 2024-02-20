@@ -6,7 +6,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerAnnullert_v1
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
@@ -32,7 +31,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
                 sikkerlogg.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
                 log.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
             } }
-            .takeUnless { it.size == 1 && sisteLest == 0L && it.first().offset() == 0L }
+            .takeUnless { sisteLest == 0L && detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(it) }
             ?: emptyList()
         val feed = records
             .take(maksAntall)
@@ -46,6 +45,17 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         context.respond(feed)
     }
 }
+
+/**
+ * Polling med sisteLest = 0 når det er én melding der (med offset = 0) vil føre til
+at man kan polle uendelig mange ganger og få den første meldingen igjen og igjen (vi ser ikke forskjell på
+første poll med ingen meldinger og første poll med én melding siden Infotrygd i begge tilfeller poller fra 0).
+Løsningen er at vi ikke leverer noen meldinger før det er (minst) to meldinger på topic-en,
+slik at neste poll vil lese fra sisteLest = 1 (eller mer).
+ */
+private fun detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(meldinger: List<ConsumerRecord<String, Vedtak>>) =
+    meldinger.size == 1 && meldinger.first().offset() == 0L
+
 
 private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
     tittel = "SykepengerVedtaksperioder",
