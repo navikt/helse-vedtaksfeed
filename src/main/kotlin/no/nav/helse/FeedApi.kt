@@ -48,10 +48,10 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
 
 /**
  * Polling med sisteLest = 0 når det er én melding der (med offset = 0) vil føre til
-at man kan polle uendelig mange ganger og få den første meldingen igjen og igjen (vi ser ikke forskjell på
-første poll med ingen meldinger og første poll med én melding siden Infotrygd i begge tilfeller poller fra 0).
-Løsningen er at vi ikke leverer noen meldinger før det er (minst) to meldinger på topic-en,
-slik at neste poll vil lese fra sisteLest = 1 (eller mer).
+ * at man kan polle uendelig mange ganger og få den første meldingen igjen og igjen (vi ser ikke forskjell på
+ * første poll med ingen meldinger og første poll med én melding siden Infotrygd i begge tilfeller poller fra 0).
+ * Løsningen er at vi ikke leverer noen meldinger før det er (minst) to meldinger på topic-en,
+ * slik at neste poll vil lese fra sisteLest = 1 (eller mer).
  */
 private fun detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(meldinger: List<ConsumerRecord<String, Vedtak>>) =
     meldinger.size == 1 && meldinger.first().offset() == 0L
