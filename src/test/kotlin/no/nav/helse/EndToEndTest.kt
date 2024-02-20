@@ -247,49 +247,51 @@ internal class EndToEndTest {
     private fun sendVedtaksperiodeOpprettet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
         val vedtaksperiodeOpprettet = """{
-      "@event_name": "vedtaksperiode_opprettet",
-      "organisasjonsnummer": "orgnr",
-      "vedtaksperiodeId": "$vedtaksperiodeId",
-      "fom": "2024-02-12",
-      "tom": "2024-02-16",
-      "@id": "${UUID.randomUUID()}",
-      "@opprettet": "$opprettet",
-      "aktørId": "aktørid",
-      "fødselsnummer": "fnr"
-    }
-    """
+          "@event_name": "vedtaksperiode_opprettet",
+          "organisasjonsnummer": "orgnr",
+          "vedtaksperiodeId": "$vedtaksperiodeId",
+          "fom": "2024-02-12",
+          "tom": "2024-02-16",
+          "@id": "${UUID.randomUUID()}",
+          "@opprettet": "$opprettet",
+          "aktørId": "aktørid",
+          "fødselsnummer": "fnr"
+        }
+        """.trimIndent()
         rapid.sendTestMessage(vedtaksperiodeOpprettet)
     }
+
     private fun sendAvsluttetMedVedtak(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
         val melding = """{
-  "@event_name": "avsluttet_med_vedtak",
-  "organisasjonsnummer": "orgnr",
-  "vedtaksperiodeId": "$vedtaksperiodeId",
-  "fom": "2024-01-31",
-  "tom": "2024-02-17",
-  "@id": "${UUID.randomUUID()}",
-  "@opprettet": "$opprettet",
-  "aktørId": "aktørid",
-  "fødselsnummer": "fnr"
-}
-    """
+          "@event_name": "avsluttet_med_vedtak",
+          "organisasjonsnummer": "orgnr",
+          "vedtaksperiodeId": "$vedtaksperiodeId",
+          "fom": "2024-01-31",
+          "tom": "2024-02-17",
+          "@id": "${UUID.randomUUID()}",
+          "@opprettet": "$opprettet",
+          "aktørId": "aktørid",
+          "fødselsnummer": "fnr"
+        }
+        """.trimIndent()
         rapid.sendTestMessage(melding)
     }
+
     private fun sendVedtaksperiodeForkastet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
         val melding = """{
-  "@event_name": "vedtaksperiode_forkastet",
-  "organisasjonsnummer": "orgnr",
-  "vedtaksperiodeId": "$vedtaksperiodeId",
-  "fom": "2023-11-15",
-  "tom": "2023-11-24",
-  "@id": "${UUID.randomUUID()}",
-  "@opprettet": "$opprettet",
-  "aktørId": "aktørid",
-  "fødselsnummer": "fnr"
-}
-    """
+          "@event_name": "vedtaksperiode_forkastet",
+          "organisasjonsnummer": "orgnr",
+          "vedtaksperiodeId": "$vedtaksperiodeId",
+          "fom": "2023-11-15",
+          "tom": "2023-11-24",
+          "@id": "${UUID.randomUUID()}",
+          "@opprettet": "$opprettet",
+          "aktørId": "aktørid",
+          "fødselsnummer": "fnr"
+        }
+        """.trimIndent()
         rapid.sendTestMessage(melding)
     }
 
