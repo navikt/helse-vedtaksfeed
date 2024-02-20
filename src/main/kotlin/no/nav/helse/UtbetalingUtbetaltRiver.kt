@@ -5,9 +5,10 @@ import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 import java.util.*
 
-private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
+internal val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
 
 internal typealias Publisher = (String, Vedtak) -> Long
+internal fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
 
 class UtbetalingUtbetaltRiver(
     rapidsConnection: RapidsConnection,
@@ -104,5 +105,4 @@ private fun JsonMessage.forbrukteStønadsdager(): Int {
     return if (gjenståendeSykedager > 0) stønadsdagerPåEkte else stønadsdagerPåEkte + 5_000
 }
 
-private fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
 

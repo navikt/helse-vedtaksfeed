@@ -70,6 +70,7 @@ fun main() {
 internal fun RapidsConnection.setupRivers(publisher: Publisher) {
     UtbetalingUtbetaltRiver(this, publisher)
     AnnullertRiverV1(this, publisher)
+    VedtaksperiodeOpprettetRiver(this, publisher)
     start()
 }
 

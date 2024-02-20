@@ -5,8 +5,6 @@ import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 import java.util.*
 
-private val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
-
 class AnnullertRiverV1(
     rapidsConnection: RapidsConnection,
     private val vedtaksfeedPublisher: Publisher
@@ -65,5 +63,3 @@ class AnnullertRiverV1(
 private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
     korrelasjonsId to korrelasjonsId.base32Encode()
 }
-
-private fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
