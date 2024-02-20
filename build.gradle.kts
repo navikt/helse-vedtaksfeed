@@ -1,7 +1,7 @@
 val junitJupiterVersion = "5.10.2"
 val ktorVersion = "2.3.8"
 val rapidsAndRiversVersion = "2024020507581707116327.1c34df474331"
-val wireMockVersion = "2.33.2"
+val wireMockVersion = "3.0.3"
 
 plugins {
     kotlin("jvm") version "1.9.22"
@@ -38,25 +38,24 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    testImplementation("no.nav:kafka-embedded-env:3.2.4") {
+    testImplementation("no.nav:kafka-embedded-env:3.2.5") {
         constraints {
-            implementation("io.netty:netty-common") {
-                version { require("4.1.80.Final") }
-                because("no.nav:kafka-embedded-env:3.2.1 drar inn sårbar versjon 4.1.77.Final")
+            implementation("org.apache.commons:commons-compress") {
+                version { require("1.24.0") }
+                because("no.nav:kafka-embedded-env:3.2.5 drar inn sårbar versjon 1.22")
             }
         }
-        exclude(group = "log4j", module = "log4j")
     }
     testImplementation("org.awaitility:awaitility:4.0.3")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
 
-    testImplementation("com.github.tomakehurst:wiremock-jre8:$wireMockVersion") {
+    testImplementation("org.wiremock:wiremock:$wireMockVersion") {
         constraints {
-            implementation("org.eclipse.jetty:jetty-bom") {
-                version { require("9.4.48.v20220622") }
-                because("wiremock v2.33.2 drar inn sårbar versjon 9.4.46.v20220331 av jetty-proxy")
+            implementation("com.jayway.jsonpath:json-path") {
+                version { require("2.9.0") }
+                because("wiremock 3.0.3 drar inn sårbar versjon 2.8.0 av json-path")
             }
         }
     }
