@@ -197,6 +197,29 @@ internal class EndToEndTest {
             }
         }
     }
+    @Test
+    fun `vedtaksperiode forkastet fører til fjerning av linje`() {
+        val vedtaksperiodeId1 = UUID.randomUUID()
+        val vedtaksperiodeId2 = UUID.randomUUID()
+        val opprettet = LocalDateTime.now()
+
+        sendVedtaksperiodeForkastet(vedtaksperiodeId1, opprettet)
+        sendVedtaksperiodeForkastet(vedtaksperiodeId2, opprettet)
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals(2, feed.elementer.size)
+                assertEquals("SykepengerAnnullert", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2023, 11, 15), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2023, 11, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("aktørid", feed.elementer[0].innhold.aktoerId)
+                assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("$vedtaksperiodeId1", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(opprettet.toLocalDate(), feed.elementer[0].metadata.opprettetDato)
+            }
+        }
+    }
 
     private fun sendVedtaksperiodeOpprettet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
@@ -211,6 +234,22 @@ internal class EndToEndTest {
       "aktørId": "aktørid",
       "fødselsnummer": "fnr"
     }
+    """
+        rapid.sendTestMessage(vedtaksperiodeOpprettet)
+    }
+    private fun sendVedtaksperiodeForkastet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
+        //language=JSON
+        val vedtaksperiodeOpprettet = """{
+  "@event_name": "vedtaksperiode_forkastet",
+  "organisasjonsnummer": "orgnr",
+  "vedtaksperiodeId": "$vedtaksperiodeId",
+  "fom": "2023-11-15",
+  "tom": "2023-11-24",
+  "@id": "${UUID.randomUUID()}",
+  "@opprettet": "$opprettet",
+  "aktørId": "aktørid",
+  "fødselsnummer": "fnr"
+}
     """
         rapid.sendTestMessage(vedtaksperiodeOpprettet)
     }
