@@ -26,10 +26,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.URL
+import java.net.*
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.*
@@ -321,7 +318,7 @@ internal class EndToEndTest {
         path: String,
         builder: HttpURLConnection.() -> Unit = {}
     ): HttpURLConnection {
-        val url = URL("$this$path")
+        val url = URI("$this$path").toURL()
         val con = url.openConnection() as HttpURLConnection
         con.requestMethod = method.value
 
