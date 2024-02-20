@@ -72,6 +72,7 @@ internal fun RapidsConnection.setupRivers(publisher: Publisher) {
     AnnullertRiverV1(this, publisher)
     VedtaksperiodeOpprettetRiver(this, publisher)
     VedtaksperiodeForkastetRiver(this, publisher)
+    AvsluttetMedVedtakRiver(this, publisher)
     start()
 }
 
