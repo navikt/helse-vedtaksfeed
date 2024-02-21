@@ -13,13 +13,14 @@ import java.time.Duration
 
 private val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
 private const val ANTALL_POLL = 5
+private const val STANDARD_ANTALL = 100
 
 internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
     val topicPartition = TopicPartition(topic, 0)
     consumer.assign(listOf(topicPartition))
 
     get("/feed") {
-        val maksAntall = this.context.parameters["maxAntall"]?.toInt() ?: 100
+        val maksAntall = this.context.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
         val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
