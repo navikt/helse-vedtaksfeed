@@ -47,7 +47,7 @@ internal class EndToEndTest {
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertTrue(feed.elementer.isNotEmpty())
+                assertEquals(100, feed.elementer.size)
             }
         }
     }
@@ -59,17 +59,17 @@ internal class EndToEndTest {
             "/feed?sistLesteSekvensId=0&maxAntall=10".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(10, feed.elementer.size)
-                assertEquals(0, feed.elementer.first().sekvensId)
+                assertEquals(1, feed.elementer.first().sekvensId)
                 assertEquals(80, feed.elementer.first().innhold.forbrukteStoenadsdager)
                 assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
                 assertTrue(feed.inneholderFlereElementer)
             }
         }
 
-        "/feed?sistLesteSekvensId=9&maxAntall=10".httpGet {
+        "/feed?sistLesteSekvensId=10&maxAntall=10".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
             assertEquals(10, feed.elementer.size)
-            assertEquals(10, feed.elementer.first().sekvensId)
+            assertEquals(11, feed.elementer.first().sekvensId)
             assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
         }
 
@@ -78,7 +78,7 @@ internal class EndToEndTest {
             assertTrue(feed.elementer.isEmpty())
         }
 
-        "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
+        "/feed?sistLesteSekvensId=82&maxAntall=50".httpGet {
             val feed = objectMapper.readValue<Feed>(this)
             assertEquals(21, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
@@ -102,12 +102,11 @@ internal class EndToEndTest {
         }
     }
 
-
     @Test
     fun annulleringV1() {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
+            "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
 
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
@@ -141,7 +140,7 @@ internal class EndToEndTest {
     fun `utbetaling utbetalt med et hint av revurdering`() {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
+            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
@@ -158,7 +157,7 @@ internal class EndToEndTest {
     fun `les ut utbetaling til bruker`(){
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
+            "/feed?sistLesteSekvensId=102&maxAntall=1".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2021, 8, 17), feed.elementer[0].innhold.foersteStoenadsdag)
@@ -174,16 +173,14 @@ internal class EndToEndTest {
     @Test
     fun `vedtaksperiode opprettet fører til ny linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
-        val vedtaksperiodeId2 = UUID.randomUUID()
         val opprettet = LocalDateTime.now()
 
         sendVedtaksperiodeOpprettet(vedtaksperiodeId1, opprettet)
-        sendVedtaksperiodeOpprettet(vedtaksperiodeId2, opprettet)
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(2, feed.elementer.size)
+                assertEquals(1, feed.elementer.size)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2024, 2, 12), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2024, 2, 16), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -197,16 +194,14 @@ internal class EndToEndTest {
     @Test
     fun `vedtaksperiode forkastet fører til fjerning av linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
-        val vedtaksperiodeId2 = UUID.randomUUID()
         val opprettet = LocalDateTime.now()
 
         sendVedtaksperiodeForkastet(vedtaksperiodeId1, opprettet)
-        sendVedtaksperiodeForkastet(vedtaksperiodeId2, opprettet)
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(2, feed.elementer.size)
+                assertEquals(1, feed.elementer.size)
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2023, 11, 15), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2023, 11, 24), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -220,16 +215,14 @@ internal class EndToEndTest {
     @Test
     fun `vedtaksperiode utbetalt fører til fjerning av linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
-        val vedtaksperiodeId2 = UUID.randomUUID()
         val opprettet = LocalDateTime.now()
 
         sendAvsluttetMedVedtak(vedtaksperiodeId1, opprettet)
-        sendAvsluttetMedVedtak(vedtaksperiodeId2, opprettet)
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(2, feed.elementer.size)
+                assertEquals(1, feed.elementer.size)
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2024, 1, 31), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2024, 2, 17), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -343,12 +336,11 @@ internal class EndToEndTest {
 
     private lateinit var appBaseUrl: String
     private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
-    private lateinit var jwtStub: JwtStub
+    private val jwtStub: JwtStub = mockAuthentication()
 
     private val infotrygClientId = "my_cool_client_id"
     private val vedtaksfeedAudience = "vedtaksfeed_client_id"
     private val randomPort = ServerSocket(0).use { it.localPort }
-    private val jwtIssuer = mockAuthentication()
 
     private val ktor: ApplicationEngine = setupKtor()
 
@@ -388,7 +380,7 @@ internal class EndToEndTest {
         it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
     }
 
-    private fun mockAuthentication(): String {
+    private fun mockAuthentication(): JwtStub {
         wireMockServer.start()
         await("vent på WireMockServer har startet")
             .atMost(5, TimeUnit.SECONDS)
@@ -400,10 +392,10 @@ internal class EndToEndTest {
                 }
             }
         val jwtIssuer = "jwtIssuer"
-        jwtStub = JwtStub(jwtIssuer, wireMockServer)
+        val jwtStub = JwtStub(jwtIssuer, wireMockServer)
         WireMock.stubFor(jwtStub.stubbedJwkProvider())
         WireMock.stubFor(jwtStub.stubbedConfigProvider())
-        return jwtIssuer
+        return jwtStub
     }
 
     private fun loadTestConfig(): Properties = Properties().also {

@@ -21,42 +21,30 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
 
     get("/feed") {
         val maksAntall = this.context.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
-        val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
+        val nesteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
-        val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
-        consumer.seek(topicPartition, seekTil)
+        consumer.seek(topicPartition, nesteLest)
 
         val records = 0.until(ANTALL_POLL)
-            .flatMap { index -> consumer.poll(Duration.ofMillis(500)).also {
-                sikkerlogg.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
-                log.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
-            } }
-            .takeUnless { sisteLest == 0L && detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(it) }
-            ?: emptyList()
+            .flatMap { index ->
+                consumer.poll(Duration.ofMillis(500)).also {
+                    sikkerlogg.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                    log.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                }
+            }
         val feed = records
             .take(maksAntall)
             .map { record -> record.toFeedElement() }
             .toFeed(maksAntall)
 
-        "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest. Siste sendte sekvensnummer er ${feed.elementer.lastOrNull()?.sekvensId ?: "N/A"} callId=${call.callId}".also {
+        "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $nesteLest. Siste sendte sekvensnummer er ${feed.elementer.lastOrNull()?.sekvensId ?: "N/A"} callId=${call.callId}".also {
             log.info(it)
             sikkerlogg.info(it)
         }
         context.respond(feed)
     }
 }
-
-/**
- * Polling med sisteLest = 0 når det er én melding der (med offset = 0) vil føre til
- * at man kan polle uendelig mange ganger og få den første meldingen igjen og igjen (vi ser ikke forskjell på
- * første poll med ingen meldinger og første poll med én melding siden Infotrygd i begge tilfeller poller fra 0).
- * Løsningen er at vi ikke leverer noen meldinger før det er (minst) to meldinger på topic-en,
- * slik at neste poll vil lese fra sisteLest = 1 (eller mer).
- */
-private fun detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(meldinger: List<ConsumerRecord<String, Vedtak>>) =
-    meldinger.size == 1 && meldinger.first().offset() == 0L
-
 
 private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
     tittel = "SykepengerVedtaksperioder",
@@ -68,7 +56,7 @@ private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
     this.value().let { vedtak ->
         Feed.Element(
             type = toExternalName(vedtak.type),
-            sekvensId = this.offset(),
+            sekvensId = this.offset() + 1,
             metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
             innhold = Feed.Element.Innhold(
                 aktoerId = vedtak.aktørId,
