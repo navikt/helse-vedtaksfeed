@@ -36,6 +36,7 @@ class Vedtak(
     val fødselsnummer: String,
     val førsteStønadsdag: LocalDate,
     val sisteStønadsdag: LocalDate,
+    /** dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå. */
     val førsteFraværsdag: String,
     val forbrukteStønadsdager: Int
 ) {
