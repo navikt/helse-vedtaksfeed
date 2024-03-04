@@ -3,8 +3,8 @@ package no.nav.helse
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.*
 
@@ -33,11 +33,10 @@ class MaksdatoTest {
         assertEquals(26, interneVedtak[0].forbrukteStønadsdager)
     }
 
-    @Disabled
     @Test
     fun `Vi skal hente første dag fra en linje som ikke er opphørt`() {
         rapid.sendTestMessage(utbetalingMedOpphørFørst)
-        assertEquals("2023-10-12", interneVedtak[0].førsteStønadsdag)
+        assertEquals(LocalDate.parse("2023-10-12"), interneVedtak[0].førsteStønadsdag)
     }
 
 }

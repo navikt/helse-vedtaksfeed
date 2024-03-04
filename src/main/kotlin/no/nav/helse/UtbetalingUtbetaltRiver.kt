@@ -41,6 +41,7 @@ class UtbetalingUtbetaltRiver(
                     require("fom", JsonNode::asLocalDate)
                     require("tom", JsonNode::asLocalDate)
                 }
+                it.interestedIn("statuskode")
             }
         }.register(this)
     }
@@ -62,7 +63,7 @@ class UtbetalingUtbetaltRiver(
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = packet.førsteStønadsdag,
                 sisteStønadsdag = packet.sisteStønadsdag,
-                førsteFraværsdag = base32EncodedKorrelasjonsId,
+                førsteFraværsdag = base32EncodedKorrelasjonsId, // dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå.
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
             )
                 .also { if (it.forbrukteStønadsdager > 5_000) log.info("Utbetalt til maksdato i ny løsning for ${it.aktørId}") }
@@ -80,15 +81,20 @@ class UtbetalingUtbetaltRiver(
     }
 
     private val JsonMessage.førsteStønadsdag get() = listOfNotNull(
-        this["arbeidsgiverOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate(),
-        this["personOppdrag.linjer"].firstOrNull()?.path("fom")?.asLocalDate()
+        this["arbeidsgiverOppdrag.linjer"].firstOrNull { !it.erOpphørt() }?.path("fom")?.asLocalDate(),
+        this["personOppdrag.linjer"].firstOrNull { !it.erOpphørt() }?.path("fom")?.asLocalDate()
     ).min()
 
     private val JsonMessage.sisteStønadsdag get() = listOfNotNull(
-        this["arbeidsgiverOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate(),
-        this["personOppdrag.linjer"].lastOrNull()?.path("tom")?.asLocalDate()
+        this["arbeidsgiverOppdrag.linjer"].lastOrNull { !it.erOpphørt() }?.path("tom")?.asLocalDate(),
+        this["personOppdrag.linjer"].lastOrNull { !it.erOpphørt() }?.path("tom")?.asLocalDate()
     ).max()
 
+    private fun JsonNode.erOpphørt():Boolean {
+        if (!this.has("statuskode")) return false
+        if (!this["statuskode"].isTextual) return false
+        return this["statuskode"].asText() == "OPPH"
+    }
 }
 
 private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
