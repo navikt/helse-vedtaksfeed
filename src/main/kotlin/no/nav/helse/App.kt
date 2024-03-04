@@ -20,7 +20,6 @@ import io.ktor.server.routing.*
 import no.nav.helse.rapids_rivers.AivenConfig
 import no.nav.helse.rapids_rivers.RapidApplication
 import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.defaultNaisApplication
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import java.util.*
 
 val objectMapper: ObjectMapper = jacksonObjectMapper()
@@ -127,7 +126,7 @@ internal class AzureAdAppConfig(private val clientId: String, configurationUrl: 
             this.jwksUri = it["jwks_uri"].textValue()
         }
 
-        jwkProvider = JwkProviderBuilder(URL(this.jwksUri)).build()
+        jwkProvider = JwkProviderBuilder(URI(this.jwksUri).toURL()).build()
     }
 
     fun configureVerification(configuration: JWTAuthenticationProvider.Config) {
@@ -143,7 +142,7 @@ internal class AzureAdAppConfig(private val clientId: String, configurationUrl: 
         return jacksonObjectMapper().readTree(responseBody)
     }
 
-    private fun String.fetchUrl() = with(URL(this).openConnection() as HttpURLConnection) {
+    private fun String.fetchUrl() = with(URI(this).toURL().openConnection() as HttpURLConnection) {
         requestMethod = "GET"
         val stream: InputStream? = if (responseCode < 300) this.inputStream else this.errorStream
         responseCode to stream?.bufferedReader()?.readText()
