@@ -3,7 +3,10 @@ package no.nav.helse
 import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.time.LocalDateTime
+import java.util.*
 
 class MaksdatoTest {
 
@@ -28,6 +31,13 @@ class MaksdatoTest {
     fun `sender forbrukte dager urørt når det ikke ble uttalt til maksdato`() {
         rapid.sendTestMessage(utbetalingUtbetalt)
         assertEquals(26, interneVedtak[0].forbrukteStønadsdager)
+    }
+
+    @Disabled
+    @Test
+    fun `Vi skal hente første dag fra en linje som ikke er opphørt`() {
+        rapid.sendTestMessage(utbetalingMedOpphørFørst)
+        assertEquals("2023-10-12", interneVedtak[0].førsteStønadsdag)
     }
 
 }
@@ -97,3 +107,48 @@ private val utbetalingUtbetaltUtenGjenståendeDager = """
   }
 """
 
+
+@Language("JSON")
+val utbetalingMedOpphørFørst = """
+    {
+      "@event_name": "utbetaling_utbetalt",
+      "organisasjonsnummer": "111111111",
+      "utbetalingId": "${UUID.randomUUID()}",
+      "korrelasjonsId": "${UUID.randomUUID()}",
+      "type": "REVURDERING",
+      "fom": "2023-09-13",
+      "tom": "2023-10-18",
+      "maksdato": "2024-12-31",
+      "forbrukteSykedager": 5,
+      "gjenståendeSykedager": 243,
+      "stønadsdager": 12,
+      "tidspunkt": "${LocalDateTime.now()}",
+      "arbeidsgiverOppdrag": {
+        "linjer": [
+          {
+            "fom": "2023-10-19",
+            "tom": "2023-10-27",
+            "statuskode": "OPPH"
+          },
+          {
+            "fom": "2023-10-12",
+            "tom": "2023-10-18",
+            "statuskode": null
+          },
+          {
+            "fom": "2023-10-19",
+            "tom": "2023-10-27",
+            "statuskode": null
+          }
+        ]
+      },
+      "personOppdrag": {
+        "linjer": []
+      },
+      "utbetalingsdager": [],
+      "@id": "${UUID.randomUUID()}",
+      "@opprettet": "2020-01-01T01:01:01.000000000",
+      "aktørId": "1111110000000",
+      "fødselsnummer": "11111100000"
+    }
+""".trimIndent()
