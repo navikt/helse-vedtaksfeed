@@ -172,13 +172,13 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun `vedtaksperiode opprettet fører til ny linje`() {
+    fun `behandling opprettet fører til ny linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
         val vedtaksperiodeId2 = UUID.randomUUID()
         val opprettet = LocalDateTime.now()
 
-        sendVedtaksperiodeOpprettet(vedtaksperiodeId1, opprettet)
-        sendVedtaksperiodeOpprettet(vedtaksperiodeId2, opprettet)
+        sendBehandlingOpprettet(vedtaksperiodeId1, opprettet)
+        sendBehandlingOpprettet(vedtaksperiodeId2, opprettet)
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
@@ -241,12 +241,13 @@ internal class EndToEndTest {
         }
     }
 
-    private fun sendVedtaksperiodeOpprettet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
+    private fun sendBehandlingOpprettet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
-        val vedtaksperiodeOpprettet = """{
-          "@event_name": "vedtaksperiode_opprettet",
+        val behandlingOpprettet = """{
+          "@event_name": "behandling_opprettet",
           "organisasjonsnummer": "orgnr",
           "vedtaksperiodeId": "$vedtaksperiodeId",
+          "behandlingId": "${UUID.randomUUID()}",
           "fom": "2024-02-12",
           "tom": "2024-02-16",
           "@id": "${UUID.randomUUID()}",
@@ -255,7 +256,7 @@ internal class EndToEndTest {
           "fødselsnummer": "fnr"
         }
         """.trimIndent()
-        rapid.sendTestMessage(vedtaksperiodeOpprettet)
+        rapid.sendTestMessage(behandlingOpprettet)
     }
 
     private fun sendAvsluttetMedVedtak(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {

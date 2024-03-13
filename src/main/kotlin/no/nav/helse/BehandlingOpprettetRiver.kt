@@ -3,14 +3,13 @@ package no.nav.helse
 import com.fasterxml.jackson.databind.JsonNode
 import net.logstash.logback.argument.StructuredArguments.kv
 import no.nav.helse.rapids_rivers.*
-import org.slf4j.LoggerFactory
 
-class VedtaksperiodeOpprettetRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) : River.PacketListener {
+class BehandlingOpprettetRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) : River.PacketListener {
 
     init {
         River(rapidsConnection).apply {
             validate {
-                it.demandValue("@event_name", "vedtaksperiode_opprettet")
+                it.demandValue("@event_name", "behandling_opprettet")
                 it.requireKey("vedtaksperiodeId", "aktørId", "fødselsnummer")
                 it.require("fom", JsonNode::asLocalDate)
                 it.require("@opprettet", JsonNode::asLocalDateTime)
@@ -20,8 +19,8 @@ class VedtaksperiodeOpprettetRiver(rapidsConnection: RapidsConnection, private v
     }
 
     override fun onError(problems: MessageProblems, context: MessageContext) {
-        tjenestekallLog.error("Forstod ikke innkommende melding (vedtaksperiode_opprettet): ${problems.toExtendedReport()}")
-        log.error("Forstod ikke innkommende melding (vedtaksperiode_opprettet): $problems")
+        tjenestekallLog.error("Forstod ikke innkommende melding (behandling_opprettet): ${problems.toExtendedReport()}")
+        log.error("Forstod ikke innkommende melding (behandling_opprettet): $problems")
 
     }
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
@@ -39,7 +38,7 @@ class VedtaksperiodeOpprettetRiver(rapidsConnection: RapidsConnection, private v
         )
             .republish(vedtaksfeedPublisher)
             .also { offset->
-                "Republiserer vedtaksperiodeOpprettet for vedtaksperiodeId=$vedtaksperiodeId på intern topic med offset $offset".also {
+                "Republiserer behandling_opprettet for vedtaksperiodeId=$vedtaksperiodeId på intern topic med offset $offset".also {
                     log.info(it)
                     tjenestekallLog.info(it, kv("fødselsnummer", fødselsnummer))
                 }
