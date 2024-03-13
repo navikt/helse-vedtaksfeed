@@ -28,6 +28,7 @@ import org.junit.jupiter.api.TestInstance
 import java.io.InputStream
 import java.net.*
 import java.time.LocalDate
+import java.time.LocalDate.EPOCH
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -195,21 +196,21 @@ internal class EndToEndTest {
         }
     }
     @Test
-    fun `vedtaksperiode forkastet fører til fjerning av linje`() {
+    fun `behandling forkastet fører til fjerning av linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
         val vedtaksperiodeId2 = UUID.randomUUID()
         val opprettet = LocalDateTime.now()
 
-        sendVedtaksperiodeForkastet(vedtaksperiodeId1, opprettet)
-        sendVedtaksperiodeForkastet(vedtaksperiodeId2, opprettet)
+        sendBehandlingForkastet(vedtaksperiodeId1, opprettet)
+        sendBehandlingForkastet(vedtaksperiodeId2, opprettet)
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
                 val feed = objectMapper.readValue<Feed>(this)
                 assertEquals(2, feed.elementer.size)
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
-                assertEquals(LocalDate.of(2023, 11, 15), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2023, 11, 24), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals(EPOCH, feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(EPOCH, feed.elementer[0].innhold.sisteStoenadsdag)
                 assertEquals("aktørid", feed.elementer[0].innhold.aktoerId)
                 assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("$vedtaksperiodeId1", feed.elementer[0].innhold.utbetalingsreferanse)
@@ -276,14 +277,13 @@ internal class EndToEndTest {
         rapid.sendTestMessage(melding)
     }
 
-    private fun sendVedtaksperiodeForkastet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
+    private fun sendBehandlingForkastet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
         val melding = """{
-          "@event_name": "vedtaksperiode_forkastet",
+          "@event_name": "behandling_forkastet",
           "organisasjonsnummer": "orgnr",
           "vedtaksperiodeId": "$vedtaksperiodeId",
-          "fom": "2023-11-15",
-          "tom": "2023-11-24",
+          "behandlingId": "${UUID.randomUUID()}",
           "@id": "${UUID.randomUUID()}",
           "@opprettet": "$opprettet",
           "aktørId": "aktørid",

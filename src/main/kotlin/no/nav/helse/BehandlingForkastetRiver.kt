@@ -3,25 +3,24 @@ package no.nav.helse
 import com.fasterxml.jackson.databind.JsonNode
 import net.logstash.logback.argument.StructuredArguments
 import no.nav.helse.rapids_rivers.*
+import java.time.LocalDate
 
-class VedtaksperiodeForkastetRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) :
+class BehandlingForkastetRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) :
     River.PacketListener {
 
     init {
         River(rapidsConnection).apply {
             validate {
-                it.demandValue("@event_name", "vedtaksperiode_forkastet")
+                it.demandValue("@event_name", "behandling_forkastet")
                 it.requireKey("vedtaksperiodeId", "aktørId", "fødselsnummer")
-                it.require("fom", JsonNode::asLocalDate)
                 it.require("@opprettet", JsonNode::asLocalDateTime)
-                it.require("tom", JsonNode::asLocalDate)
             }
         }.register(this)
     }
 
     override fun onError(problems: MessageProblems, context: MessageContext) {
-        tjenestekallLog.error("Forstod ikke innkommende melding (vedtaksperiode_forkastet): ${problems.toExtendedReport()}")
-        log.error("Forstod ikke innkommende melding (vedtaksperiode_forkastet): $problems")
+        tjenestekallLog.error("Forstod ikke innkommende melding (behandling_forkastet): ${problems.toExtendedReport()}")
+        log.error("Forstod ikke innkommende melding (behandling_forkastet): $problems")
 
     }
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
@@ -32,14 +31,14 @@ class VedtaksperiodeForkastetRiver(rapidsConnection: RapidsConnection, private v
             opprettet = packet["@opprettet"].asLocalDateTime(),
             aktørId = packet["aktørId"].textValue(),
             fødselsnummer = fødselsnummer,
-            førsteStønadsdag = packet["fom"].asLocalDate(),
-            sisteStønadsdag = packet["tom"].asLocalDate(),
+            førsteStønadsdag = LocalDate.EPOCH,
+            sisteStønadsdag = LocalDate.EPOCH,
             førsteFraværsdag = vedtaksperiodeId,
             forbrukteStønadsdager = 0
         )
             .republish(vedtaksfeedPublisher)
             .also { offset->
-                "Republiserer vedtaksperiodeForkastet for vedtaksperiodeId=$vedtaksperiodeId på intern topic med offset $offset".also {
+                "Republiserer behandling_forkastet for vedtaksperiodeId=$vedtaksperiodeId på intern topic med offset $offset".also {
                     log.info(it)
                     tjenestekallLog.info(it, StructuredArguments.kv("fødselsnummer", fødselsnummer))
                 }
