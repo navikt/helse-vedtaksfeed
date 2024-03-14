@@ -67,11 +67,11 @@ fun main() {
 }
 
 internal fun RapidsConnection.setupRivers(publisher: Publisher) {
-    UtbetalingUtbetaltRiver(this, publisher)
+    AvstemmingRiver(this, publisher)
+    // kun nødvendig frem til avstemmingen har kjørt alle personer
     AnnullertRiverV1(this, publisher)
     BehandlingOpprettetRiver(this, publisher)
     BehandlingForkastetRiver(this, publisher)
-    AvsluttetMedVedtakRiver(this, publisher)
     start()
 }
 
