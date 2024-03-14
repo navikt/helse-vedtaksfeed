@@ -40,7 +40,7 @@ class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfee
 
         packet["arbeidsgivere"].forEach { arbeidsgiver ->
             arbeidsgiver.path("vedtaksperioder").forEach { vedtaksperiode ->
-                val vedtaksperiodeId = vedtaksperiode["id"].asText()
+                val vedtaksperiodeId = vedtaksperiode["vedtaksperiodeId"].asText()
                 Vedtak(
                     type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                     opprettet = opprettet,
