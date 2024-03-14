@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import net.logstash.logback.argument.StructuredArguments
 import no.nav.helse.rapids_rivers.*
 import java.time.LocalDate
+import java.util.*
 
 class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) :
     River.PacketListener {
@@ -54,7 +55,7 @@ class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfee
             }
 
             arbeidsgiver.path("utbetalinger").forEach { utbetaling ->
-                val korrelasjonsId = utbetaling["korrelasjonsId"].asText()
+                val (korrelasjonsId, base32EncodedKorrelasjonsId) = utbetaling["korrelasjonsId"].asText().korrelasjonsId()
                 Vedtak(
                     type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                     opprettet = opprettet,
@@ -62,10 +63,14 @@ class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfee
                     fødselsnummer = fødselsnummer,
                     førsteStønadsdag = LocalDate.EPOCH,
                     sisteStønadsdag = LocalDate.EPOCH,
-                    førsteFraværsdag = korrelasjonsId,
+                    førsteFraværsdag = base32EncodedKorrelasjonsId,
                     forbrukteStønadsdager = 0
                 ).republish(vedtaksfeedPublisher)
             }
         }
     }
+}
+
+private fun String.korrelasjonsId() = UUID.fromString(this).let { korrelasjonsId ->
+    korrelasjonsId to korrelasjonsId.base32Encode()
 }
