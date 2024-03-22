@@ -45,10 +45,6 @@ spec:
           cluster: dev-fss
   secureLogs:
     enabled: true
-  observability:
-    autoInstrumentation:
-      enabled: true
-      runtime: java
   ingresses:
     - "https://vedtaksfeed.intern.dev.nav.no"
   env:
