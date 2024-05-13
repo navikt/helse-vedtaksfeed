@@ -219,6 +219,29 @@ internal class EndToEndTest {
         }
     }
 
+    @Test
+    fun `vedtaksperiode avstemt fører til fjerning av linje`() {
+        val vedtaksperiodeId1 = UUID.randomUUID()
+        val vedtaksperiodeId2 = UUID.randomUUID()
+        val opprettet = LocalDateTime.now()
+        sendPersonAvstemt(vedtaksperiodeId1, opprettet)
+        sendPersonAvstemt(vedtaksperiodeId2, opprettet)
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+            "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
+                val feed = objectMapper.readValue<Feed>(this)
+                assertEquals(2, feed.elementer.size)
+                assertEquals("SykepengerAnnullert", feed.elementer[0].type)
+                assertEquals(LocalDate.of(2024, 1, 31), feed.elementer[0].innhold.foersteStoenadsdag)
+                assertEquals(LocalDate.of(2024, 2, 17), feed.elementer[0].innhold.sisteStoenadsdag)
+                assertEquals("aktørid", feed.elementer[0].innhold.aktoerId)
+                assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
+                assertEquals("$vedtaksperiodeId1", feed.elementer[0].innhold.utbetalingsreferanse)
+                assertEquals(opprettet.toLocalDate(), feed.elementer[0].metadata.opprettetDato)
+            }
+        }
+    }
+
     private fun sendBehandlingOpprettet(vedtaksperiodeId: UUID, opprettet: LocalDateTime) {
         //language=JSON
         val behandlingOpprettet = """{
@@ -251,6 +274,29 @@ internal class EndToEndTest {
           "fødselsnummer": "fnr"
         }
         """.trimIndent()
+        rapid.sendTestMessage(melding)
+    }
+
+    private fun sendPersonAvstemt(vedtaksperiode: UUID, opprettet: LocalDateTime) {
+        //language=JSON
+        val melding = """{
+  "@event_name": "person_avstemt",
+  "@id": "${UUID.randomUUID()}",
+  "@opprettet": "$opprettet",
+  "aktørId": "aktørid",
+  "fødselsnummer": "fnr",
+  "arbeidsgivere": [
+    {
+      "vedtaksperioder": [
+        {
+          "id": "$vedtaksperiode",
+          "fom": "2024-01-31",
+          "tom": "2024-02-17"
+        }
+      ]
+    }
+  ]
+}""".trimIndent()
         rapid.sendTestMessage(melding)
     }
 

@@ -8,7 +8,9 @@ import java.util.*
 internal val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
 
 internal typealias Publisher = (String, Vedtak) -> Long
-internal fun Vedtak.republish(publisher: Publisher) = publisher(fødselsnummer, this)
+internal fun Vedtak.republish(publisher: Publisher) {
+    publisher(fødselsnummer, this)
+}
 
 class UtbetalingUtbetaltRiver(
     rapidsConnection: RapidsConnection,
