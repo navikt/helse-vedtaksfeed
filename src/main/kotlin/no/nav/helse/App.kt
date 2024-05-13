@@ -69,8 +69,9 @@ fun main() {
 internal fun RapidsConnection.setupRivers(publisher: Publisher) {
     UtbetalingUtbetaltRiver(this, publisher)
     AnnullertRiverV1(this, publisher)
-    BehandlingForkastetRiver(this, publisher)
-    AvsluttetMedVedtakRiver(this, publisher)
+    BehandlingForkastetRiver(this, publisher) // river kan fjernes når alle personer er avstemt
+    AvsluttetMedVedtakRiver(this, publisher) // river kan fjernes når alle personer er avstemt
+    AvstemmingRiver(this, publisher) // river kan fjernes når alle personer er avstemt
     start()
 }
 
