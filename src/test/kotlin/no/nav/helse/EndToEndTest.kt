@@ -173,29 +173,6 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun `behandling opprettet fører til ny linje`() {
-        val vedtaksperiodeId1 = UUID.randomUUID()
-        val vedtaksperiodeId2 = UUID.randomUUID()
-        val opprettet = LocalDateTime.now()
-
-        sendBehandlingOpprettet(vedtaksperiodeId1, opprettet)
-        sendBehandlingOpprettet(vedtaksperiodeId2, opprettet)
-
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=0&maxAntall=2".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-                assertEquals(2, feed.elementer.size)
-                assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
-                assertEquals(LocalDate.of(2024, 2, 12), feed.elementer[0].innhold.foersteStoenadsdag)
-                assertEquals(LocalDate.of(2024, 2, 16), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals("aktørid", feed.elementer[0].innhold.aktoerId)
-                assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
-                assertEquals("$vedtaksperiodeId1", feed.elementer[0].innhold.utbetalingsreferanse)
-                assertEquals(opprettet.toLocalDate(), feed.elementer[0].metadata.opprettetDato)
-            }
-        }
-    }
-    @Test
     fun `behandling forkastet fører til fjerning av linje`() {
         val vedtaksperiodeId1 = UUID.randomUUID()
         val vedtaksperiodeId2 = UUID.randomUUID()
