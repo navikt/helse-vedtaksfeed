@@ -2,6 +2,7 @@ package no.nav.helse
 
 import com.fasterxml.jackson.databind.JsonNode
 import no.nav.helse.rapids_rivers.*
+import java.time.LocalDate
 
 class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfeedPublisher: Publisher) :
     River.PacketListener {
@@ -28,14 +29,14 @@ class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfee
         log.error("Forstod ikke innkommende melding (person_avstemt): $problems")
     }
 
-    override fun onSevere(error: MessageProblems.MessageException, context: MessageContext) {
-        super.onSevere(error, context)
-    }
-
     override fun onPacket(packet: JsonMessage, context: MessageContext) {
         val fødselsnummer = packet["fødselsnummer"].asText()
         val aktørId = packet["aktørId"].textValue()
         val opprettet = packet["@opprettet"].asLocalDateTime()
+
+        if (opprettet.toLocalDate() > LocalDate.of(2024, 6, 17)) {
+            return log.warn("Remove this code, there is no need for it as all persons should've been ofvoted by now.")
+        }
 
         packet["arbeidsgivere"].forEach { arbeidsgiver ->
             arbeidsgiver.path("vedtaksperioder").forEach { vedtaksperiode ->
