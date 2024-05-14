@@ -1,6 +1,7 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.databind.JsonNode
+import net.logstash.logback.argument.StructuredArguments
 import no.nav.helse.rapids_rivers.*
 import java.time.LocalDate
 
@@ -50,7 +51,12 @@ class AvstemmingRiver(rapidsConnection: RapidsConnection, private val vedtaksfee
                     sisteStønadsdag = vedtaksperiode["tom"].asLocalDate(),
                     førsteFraværsdag = vedtaksperiodeId,
                     forbrukteStønadsdager = 0
-                ).republish(vedtaksfeedPublisher)
+                ).republish(vedtaksfeedPublisher).also { offset->
+                    "Republiserer person_avstemt for vedtaksperiodeId=$vedtaksperiodeId på intern topic med offset $offset".also {
+                        log.info(it)
+                        tjenestekallLog.info(it, StructuredArguments.kv("fødselsnummer", fødselsnummer))
+                    }
+                }
             }
         }
     }
