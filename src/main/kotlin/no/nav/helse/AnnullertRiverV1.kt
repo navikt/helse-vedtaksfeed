@@ -22,7 +22,6 @@ class AnnullertRiverV1(
                 it.require("@opprettet", JsonNode::asLocalDateTime)
                 it.requireKey(
                     "fødselsnummer",
-                    "aktørId",
                     "organisasjonsnummer",
                     "utbetalingId",
                     "korrelasjonsId",
@@ -47,7 +46,6 @@ class AnnullertRiverV1(
             val offset = Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),
-                aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,

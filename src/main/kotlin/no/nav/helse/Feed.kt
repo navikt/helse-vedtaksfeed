@@ -32,7 +32,6 @@ class Feed(
 class Vedtak(
     val type: Vedtakstype,
     val opprettet: LocalDateTime,
-    val aktørId: String,
     val fødselsnummer: String,
     val førsteStønadsdag: LocalDate,
     val sisteStønadsdag: LocalDate,

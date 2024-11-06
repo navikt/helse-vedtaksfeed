@@ -29,7 +29,6 @@ class UtbetalingUtbetaltRiver(
                 it.require("tidspunkt", JsonNode::asLocalDateTime)
                 it.requireKey(
                     "fødselsnummer",
-                    "aktørId",
                     "organisasjonsnummer",
                     "utbetalingId",
                     "fom",
@@ -65,14 +64,18 @@ class UtbetalingUtbetaltRiver(
             Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
-                aktørId = packet["aktørId"].textValue(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
                 førsteStønadsdag = packet.førsteStønadsdag,
                 sisteStønadsdag = packet.sisteStønadsdag,
                 førsteFraværsdag = base32EncodedKorrelasjonsId, // dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå.
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
             )
-                .also { if (it.forbrukteStønadsdager > 5_000) log.info("Utbetalt til maksdato i ny løsning for ${it.aktørId}") }
+                .also {
+                    if (it.forbrukteStønadsdager > 5_000) {
+                        log.info("Utbetalt til maksdato i ny løsning for utbetalingId=$utbetalingId")
+                        sikkerlogg.info("Utbetalt til maksdato i ny løsning for utbetalingId=$utbetalingId, fnr=${it.fødselsnummer}")
+                    }
+                }
                 .republish(vedtaksfeedPublisher)
                 .also { offset->
                     "Republiserer vedtak for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $offset".also {

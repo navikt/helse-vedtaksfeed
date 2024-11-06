@@ -56,7 +56,6 @@ private val utbetalingUtbetalt = """
       "@event_name": "utbetaling_utbetalt",
       "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
       "@opprettet": "2020-12-14T15:38:14.419655",
-      "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
       "organisasjonsnummer": "999999999",
       "arbeidsgiverOppdrag": {
@@ -89,7 +88,6 @@ private val utbetalingUtbetaltUtenGjenståendeDager = """
       "@event_name": "utbetaling_utbetalt",
       "@id": "485e1fc9-b825-4089-874f-71278c93dce9",
       "@opprettet": "2020-12-14T15:38:14.419655",
-      "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
       "organisasjonsnummer": "999999999",
       "arbeidsgiverOppdrag": {
@@ -147,7 +145,6 @@ val utbetalingMedOpphørFørst = """
       "utbetalingsdager": [],
       "@id": "${UUID.randomUUID()}",
       "@opprettet": "2020-01-01T01:01:01.000000000",
-      "aktørId": "1111110000000",
       "fødselsnummer": "11111100000"
     }
 """.trimIndent()

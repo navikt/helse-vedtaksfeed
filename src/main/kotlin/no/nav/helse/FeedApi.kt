@@ -1,5 +1,8 @@
 package no.nav.helse
 
+import com.github.navikt.tbd_libs.result_object.getOrThrow
+import com.github.navikt.tbd_libs.retry.retryBlocking
+import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -9,12 +12,13 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.UUID
 
-private val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
+val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
 private const val ANTALL_POLL = 5
 private const val STANDARD_ANTALL = 100
 
-internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>) {
+internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>, speedClient: SpeedClient) {
     val topicPartition = TopicPartition(topic, 0)
     consumer.assign(listOf(topicPartition))
 
@@ -22,20 +26,20 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
         val maksAntall = this.call.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
         val sisteLest = this.call.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
-
+        val callId = call.callId ?: UUID.randomUUID().toString()
         val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
         consumer.seek(topicPartition, seekTil)
 
         val records = 0.until(ANTALL_POLL)
             .flatMap { index -> consumer.poll(Duration.ofMillis(500)).also {
-                sikkerlogg.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
-                log.info("callId=${call.callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                sikkerlogg.info("callId=${callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                log.info("callId=${callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
             } }
             .takeUnless { sisteLest == 0L && detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(it) }
             ?: emptyList()
         val feed = records
             .take(maksAntall)
-            .map { record -> record.toFeedElement() }
+            .map { record -> record.toFeedElement(speedClient, callId) }
             .toFeed(maksAntall)
 
         "Returnerer ${feed.elementer.size} elementer på feed fra sekvensnr: $sisteLest. Siste sendte sekvensnummer er ${feed.elementer.lastOrNull()?.sekvensId ?: "N/A"} callId=${call.callId}".also {
@@ -63,14 +67,15 @@ private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
     elementer = this
 )
 
-private fun ConsumerRecord<String, Vedtak>.toFeedElement() =
+private fun ConsumerRecord<String, Vedtak>.toFeedElement(speedClient: SpeedClient, callId: String) =
     this.value().let { vedtak ->
+        val identer = retryBlocking { speedClient.hentFødselsnummerOgAktørId(vedtak.fødselsnummer, callId).getOrThrow() }
         Feed.Element(
             type = toExternalName(vedtak.type),
             sekvensId = this.offset(),
             metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
             innhold = Feed.Element.Innhold(
-                aktoerId = vedtak.aktørId,
+                aktoerId = identer.aktørId,
                 fnr = vedtak.fødselsnummer,
                 foersteStoenadsdag = vedtak.førsteStønadsdag,
                 sisteStoenadsdag = vedtak.sisteStønadsdag,

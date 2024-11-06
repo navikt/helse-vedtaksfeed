@@ -1,9 +1,14 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.navikt.tbd_libs.result_object.ok
+import com.github.navikt.tbd_libs.speed.IdentResponse
+import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.server.testing.*
+import io.mockk.every
+import io.mockk.mockk
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -46,12 +51,21 @@ internal class FeedApiNulldagTest {
             it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
         }
 
+        val speedClient = mockk<SpeedClient> {
+            every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
+                fødselsnummer = "fnr",
+                aktørId = "aktørId",
+                npid = null,
+                kilde = IdentResponse.KildeResponse.PDL
+            ).ok()
+        }
+
         val kafkaProducer = KafkaProducer<String, String>(testKafkaProperties)
         val consumer = KafkaConsumer<String, Vedtak>(loadTestConfig().toSeekingConsumer())
 
         testApplication {
             application { installJacksonFeature() }
-            routing { feedApi(testTopic, consumer) }
+            routing { feedApi(testTopic, consumer, speedClient) }
 
             client.get("/feed?sistLesteSekvensId=0").let { response ->
                 val feed = objectMapper.readValue<Feed>(response.bodyAsText())
@@ -89,7 +103,6 @@ private fun vedtak(fom: LocalDate, tom: LocalDate) = """
     {
       "type": "SykepengerUtbetalt_v1",
       "opprettet": "2018-01-01T12:00:00",
-      "aktørId": "aktørId",
       "fødselsnummer": "fnr",
       "førsteStønadsdag": "$fom",
       "sisteStønadsdag": "$tom",

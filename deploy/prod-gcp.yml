@@ -43,6 +43,9 @@ spec:
         - application: infotrygd-feed-proxy-v2
           namespace: infotrygd
           cluster: prod-fss
+    outbound:
+      rules:
+        - application: speed-api
   secureLogs:
     enabled: true
   ingresses:

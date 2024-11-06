@@ -8,10 +8,14 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.github.navikt.tbd_libs.azure.AzureTokenClient
+import com.github.navikt.tbd_libs.azure.createAzureTokenClientFromEnvironment
+import com.github.navikt.tbd_libs.azure.createDefaultAzureTokenClient
 import com.github.navikt.tbd_libs.kafka.AivenConfig
 import com.github.navikt.tbd_libs.kafka.ConsumerProducerFactory
 import com.github.navikt.tbd_libs.rapids_and_rivers.createDefaultKafkaRapidFromEnv
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
+import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.serialization.jackson.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -36,6 +40,7 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URI
+import java.net.http.HttpClient
 import java.util.*
 
 val objectMapper: ObjectMapper = jacksonObjectMapper()
@@ -57,6 +62,9 @@ fun main() {
     val vedtaksfeedProducer = KafkaProducer(config.producerConfig(Properties()), StringSerializer(), VedtakSerializer())
     val vedtaksfeedConsumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer())
 
+    val azureClient = createAzureTokenClientFromEnvironment(env)
+    val speedClient = SpeedClient(HttpClient.newHttpClient(), objectMapper, azureClient)
+
     val kafkaRapid = createDefaultKafkaRapidFromEnv(
         factory = factory,
         meterRegistry = meterRegistry,
@@ -74,7 +82,7 @@ fun main() {
                 clientId = env.getValue("AZURE_APP_CLIENT_ID"),
                 configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
             )
-            vedtaksfeed(vedtaksfeedtopic, vedtaksfeedConsumer, azureConfig)
+            vedtaksfeed(vedtaksfeedtopic, vedtaksfeedConsumer, azureConfig, speedClient)
         }
         .build()
         .setupRivers { fødselsnummer, vedtak ->
@@ -105,6 +113,7 @@ internal fun Application.vedtaksfeed(
     topic: String,
     consumer: KafkaConsumer<String, Vedtak>,
     azureConfig: AzureAdAppConfig,
+    speedClient: SpeedClient
 ) {
     installJacksonFeature()
     install(CallId) {
@@ -126,7 +135,7 @@ internal fun Application.vedtaksfeed(
     }
     routing {
         authenticate {
-            feedApi(topic, consumer)
+            feedApi(topic, consumer, speedClient)
         }
     }
 }

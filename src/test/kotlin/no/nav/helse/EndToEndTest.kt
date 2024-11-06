@@ -2,12 +2,17 @@ package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
+import com.github.navikt.tbd_libs.result_object.ok
+import com.github.navikt.tbd_libs.speed.IdentResponse
+import com.github.navikt.tbd_libs.speed.SpeedClient
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.ktor.http.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
+import io.mockk.every
+import io.mockk.mockk
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -112,7 +117,7 @@ internal class EndToEndTest {
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2018, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2018, 2, 1), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals("aktørId", feed.elementer[0].innhold.aktoerId)
+                assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(0, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("3333JT3JYNB3VNT5CE5U54R3Y4", feed.elementer[0].innhold.utbetalingsreferanse)
             }
@@ -128,7 +133,7 @@ internal class EndToEndTest {
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(80, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
@@ -145,7 +150,7 @@ internal class EndToEndTest {
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
-                assertEquals("1111110000000", feed.elementer[0].innhold.aktoerId)
+                assertEquals("2336848909974", feed.elementer[0].innhold.aktoerId)
                 assertEquals(79, feed.elementer[0].innhold.forbrukteStoenadsdager)
                 assertEquals("E6TEDJJKBVEYBCEZV73WRJPGAA", feed.elementer[0].innhold.utbetalingsreferanse)
                 assertEquals(LocalDate.of(2020, 12, 14), feed.elementer[0].metadata.opprettetDato)
@@ -228,6 +233,14 @@ internal class EndToEndTest {
     private val randomPort = ServerSocket(0).use { it.localPort }
     private val jwtIssuer = mockAuthentication()
 
+    private val speedClient = mockk<SpeedClient> {
+        every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
+            fødselsnummer = "fnr",
+            aktørId = "2336848909974",
+            npid = null,
+            kilde = IdentResponse.KildeResponse.PDL
+        ).ok()
+    }
     private val ktor = setupKtor()
 
     private val internTopic = "tbd.infotrygd.vedtaksfeed.v1"
@@ -255,7 +268,8 @@ internal class EndToEndTest {
             vedtaksfeed(
                 internTopic,
                 KafkaConsumer(loadTestConfig().toSeekingConsumer(), StringDeserializer(), VedtakDeserializer()),
-                azureConfig
+                azureConfig,
+                speedClient
             )
         }
     )
@@ -339,7 +353,6 @@ internal class EndToEndTest {
 @Language("JSON")
 private val annullering = """{
     "@event_name": "utbetaling_annullert",
-    "aktørId": "aktørId",
     "fødselsnummer": "fnr",
     "organisasjonsnummer": "999263550",
     "korrelasjonsId": "def7b4cf-69c3-43ba-b67d-113b4ef23bc7",
@@ -366,7 +379,6 @@ private fun utbetalingUtbetalt(utbetalingtype: String = "UTBETALING", stønadsda
       "@event_name": "utbetaling_utbetalt",
       "@id": "d65f35dc-df67-4143-923f-d005075b0ee3",
       "@opprettet": "2020-12-14T15:38:14.419655",
-      "aktørId": "1111110000000",
       "fødselsnummer": "11111100000",
       "organisasjonsnummer": "999999999",
       "arbeidsgiverOppdrag": {
@@ -404,7 +416,6 @@ private fun utbetalingTilBruker() = """
       "@id": "25f8a9a0-3034-457d-9976-6e2575970c1f",
       "@opprettet": "2021-11-11T10:56:09.746062805",
       "fødselsnummer": "09047606370",
-      "aktørId": "2336848909974",
       "organisasjonsnummer": "972674818",
       "arbeidsgiverOppdrag": {
         "linjer": [
