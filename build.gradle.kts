@@ -1,6 +1,7 @@
 val junitJupiterVersion = "5.10.2"
-val ktorVersion = "2.3.12"
-val rapidsAndRiversVersion = "2024020507581707116327.1c34df474331"
+val ktorVersion = "3.0.1"
+val rapidsAndRiversVersion = "2024110520091730833744.40f3b6aa7090"
+val tbdLibsVersion = "2024.11.06-11.48-0e03bba3"
 val wireMockVersion = "3.0.3"
 
 plugins {
@@ -30,11 +31,12 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-jackson:$ktorVersion")
     implementation("io.ktor:ktor-server-call-id:$ktorVersion")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
+    //implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.21")
     implementation("commons-codec:commons-codec:1.15")
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
 
+    testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 

@@ -1,6 +1,7 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
@@ -8,7 +9,6 @@ import io.ktor.http.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
 import no.nav.common.KafkaEnvironment
-import no.nav.helse.rapids_rivers.testsupport.TestRapid
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -228,7 +228,7 @@ internal class EndToEndTest {
     private val randomPort = ServerSocket(0).use { it.localPort }
     private val jwtIssuer = mockAuthentication()
 
-    private val ktor: ApplicationEngine = setupKtor()
+    private val ktor = setupKtor()
 
     private val internTopic = "tbd.infotrygd.vedtaksfeed.v1"
     private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
@@ -240,11 +240,14 @@ internal class EndToEndTest {
         withSecurity = false
     )
 
-    private fun setupKtor() = embeddedServer(CIO, applicationEngineEnvironment {
-        connector {
-            port = randomPort
-        }
-        module {
+    private fun setupKtor() = embeddedServer(CIO,
+        environment = applicationEnvironment {},
+        configure = {
+            connector {
+                port = randomPort
+            }
+        },
+        module = {
             val azureConfig = AzureAdAppConfig(
                 clientId = vedtaksfeedAudience,
                 configurationUrl = "${wireMockServer.baseUrl()}/config"
@@ -255,7 +258,7 @@ internal class EndToEndTest {
                 azureConfig
             )
         }
-    })
+    )
 
     private fun Properties.toSeekingConsumer() = Properties().also {
         it.putAll(this)

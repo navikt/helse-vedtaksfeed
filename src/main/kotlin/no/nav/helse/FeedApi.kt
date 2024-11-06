@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import io.ktor.server.application.*
 import io.ktor.server.plugins.callid.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -20,8 +19,8 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
     consumer.assign(listOf(topicPartition))
 
     get("/feed") {
-        val maksAntall = this.context.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
-        val sisteLest = this.context.parameters["sistLesteSekvensId"]?.toLong()
+        val maksAntall = this.call.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
+        val sisteLest = this.call.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
 
         val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
@@ -43,7 +42,7 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
             log.info(it)
             sikkerlogg.info(it)
         }
-        context.respond(feed)
+        call.respond(feed)
     }
 }
 
