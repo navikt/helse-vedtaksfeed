@@ -8,12 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.github.navikt.tbd_libs.azure.AzureTokenClient
 import com.github.navikt.tbd_libs.azure.createAzureTokenClientFromEnvironment
-import com.github.navikt.tbd_libs.azure.createDefaultAzureTokenClient
 import com.github.navikt.tbd_libs.kafka.AivenConfig
-import com.github.navikt.tbd_libs.kafka.ConsumerProducerFactory
-import com.github.navikt.tbd_libs.rapids_and_rivers.createDefaultKafkaRapidFromEnv
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.serialization.jackson.*
@@ -25,9 +21,7 @@ import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
-import io.micrometer.prometheusmetrics.PrometheusConfig
-import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
-import no.nav.helse.rapids_rivers.RapidApplication.Builder
+import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -38,7 +32,6 @@ import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.InetAddress
 import java.net.URI
 import java.net.http.HttpClient
 import java.util.*
@@ -56,8 +49,6 @@ fun main() {
     val env = System.getenv()
 
     val config = AivenConfig.default
-    val factory = ConsumerProducerFactory(config)
-    val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
     val vedtaksfeedProducer = KafkaProducer(config.producerConfig(Properties()), StringSerializer(), VedtakSerializer())
     val vedtaksfeedConsumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer())
@@ -65,26 +56,18 @@ fun main() {
     val azureClient = createAzureTokenClientFromEnvironment(env)
     val speedClient = SpeedClient(HttpClient.newHttpClient(), objectMapper, azureClient)
 
-    val kafkaRapid = createDefaultKafkaRapidFromEnv(
-        factory = factory,
-        meterRegistry = meterRegistry,
-        env = env
-    )
-
-    Builder(
-        appName = env["RAPID_APP_NAME"] ?: generateAppName(env),
-        instanceId = generateInstanceId(env),
-        rapid = kafkaRapid,
-        meterRegistry = meterRegistry
-    )
-        .withKtorModule {
-            val azureConfig = AzureAdAppConfig(
-                clientId = env.getValue("AZURE_APP_CLIENT_ID"),
-                configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
-            )
-            vedtaksfeed(vedtaksfeedtopic, vedtaksfeedConsumer, azureConfig, speedClient)
+    RapidApplication.create(
+        env = env,
+        builder = {
+            withKtorModule {
+                val azureConfig = AzureAdAppConfig(
+                    clientId = env.getValue("AZURE_APP_CLIENT_ID"),
+                    configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
+                )
+                vedtaksfeed(vedtaksfeedtopic, vedtaksfeedConsumer, azureConfig, speedClient)
+            }
         }
-        .build()
+    )
         .setupRivers { fødselsnummer, vedtak ->
             log.info("publiserer vedtak på feed-topic")
             vedtaksfeedProducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
@@ -95,18 +78,6 @@ internal fun RapidsConnection.setupRivers(publisher: Publisher) {
     UtbetalingUtbetaltRiver(this, publisher)
     AnnullertRiverV1(this, publisher)
     start()
-}
-
-private fun generateInstanceId(env: Map<String, String>): String {
-    if (env.containsKey("NAIS_APP_NAME")) return InetAddress.getLocalHost().hostName
-    return UUID.randomUUID().toString()
-}
-
-private fun generateAppName(env: Map<String, String>): String? {
-    val appName = env["NAIS_APP_NAME"] ?: return null
-    val namespace = env["NAIS_NAMESPACE"] ?: return null
-    val cluster = env["NAIS_CLUSTER_NAME"] ?: return null
-    return "$appName-$cluster-$namespace"
 }
 
 internal fun Application.vedtaksfeed(
