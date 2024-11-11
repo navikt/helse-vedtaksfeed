@@ -1,107 +1,80 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.navikt.tbd_libs.naisful.test.TestContext
 import com.github.navikt.tbd_libs.naisful.test.naisfulTestApp
 import com.github.navikt.tbd_libs.result_object.ok
 import com.github.navikt.tbd_libs.speed.IdentResponse
 import com.github.navikt.tbd_libs.speed.SpeedClient
+import com.github.navikt.tbd_libs.test_support.kafkaTest
+import io.ktor.client.call.body
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.server.routing.routing
 import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
-import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.util.*
-import kotlin.collections.set
 
 internal class FeedApiNulldagTest {
-
-    private val testTopic = "yes"
-    private val topicInfos = listOf(
-        KafkaEnvironment.TopicInfo(testTopic, partitions = 1)
-    )
-    private val embeddedKafkaEnvironment = KafkaEnvironment(
-        autoStart = false, noOfBrokers = 1, topicInfos = topicInfos, withSchemaRegistry = false, withSecurity = false
-    )
-
-    private fun Properties.toSeekingConsumer() = Properties().also {
-        it.putAll(this)
-        it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
-        it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
-        it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
-        it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
-    }
-
     @Test
     fun `får tilbake elementer fra feed`() {
-        embeddedKafkaEnvironment.start()
-        val testKafkaProperties = loadTestConfig().also {
-            it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-            it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-        }
-
-        val speedClient = mockk<SpeedClient> {
-            every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
-                fødselsnummer = "fnr",
-                aktørId = "aktørId",
-                npid = null,
-                kilde = IdentResponse.KildeResponse.PDL
-            ).ok()
-        }
-
-        val kafkaProducer = KafkaProducer<String, String>(testKafkaProperties)
-        val consumer = KafkaConsumer<String, Vedtak>(loadTestConfig().toSeekingConsumer())
-
-        naisfulTestApp(
-            testApplicationModule = {
-                routing { feedApi(testTopic, consumer, speedClient) }
-            },
-            objectMapper = objectMapper,
-            meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
-        ) {
-            client.get("/feed?sistLesteSekvensId=0").let { response ->
-                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
-                assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic er tom")
+        kafkaTest(kafkaContainer) {
+            val speedClient = mockk<SpeedClient> {
+                every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
+                    fødselsnummer = "fnr",
+                    aktørId = "aktørId",
+                    npid = null,
+                    kilde = IdentResponse.KildeResponse.PDL
+                ).ok()
             }
 
-            val (fom1, tom1) = LocalDate.of(2020, 3, 1) to LocalDate.of(2020, 3, 15)
-            kafkaProducer.send(ProducerRecord(testTopic, "0", vedtak(fom1, tom1)))
-            client.get("/feed?sistLesteSekvensId=0").let { response ->
-                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
-                assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic bare har ett element")
-            }
+            val vedtaksfeedConsumer = KafkaConsumer(Properties().apply {
+                putAll(kafkaContainer.connectionProperties)
+                this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+                this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+                this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            }, StringDeserializer(), VedtakDeserializer())
 
-            val (fom2, tom2) = LocalDate.of(2020, 4, 1) to LocalDate.of(2020, 4, 15)
-            kafkaProducer.send(ProducerRecord(testTopic, "1", vedtak(fom2, tom2)))
-            client.get("/feed?sistLesteSekvensId=0").let { response ->
-                val feed = objectMapper.readValue<Feed>(response.bodyAsText())
-                assertTrue(
-                    feed.elementer.isNotEmpty(), "Feed skal ha elementer når det er mer enn ett element på topic"
-                )
-                assertEquals(2, feed.elementer.size)
-                assertEquals(fom1.toString(), feed.elementer[0].innhold.utbetalingsreferanse)
-                assertEquals(fom2.toString(), feed.elementer[1].innhold.utbetalingsreferanse)
+            naisfulTestApp(
+                testApplicationModule = {
+                    routing { feedApi(topicnavn, vedtaksfeedConsumer, speedClient) }
+                },
+                objectMapper = objectMapper,
+                meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
+            ) {
+                feedRequest(sistLesteSekvensId = 0, maxAntall = 10).also { feed ->
+                    assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic er tom")
+                }
+
+                val (fom1, tom1) = LocalDate.of(2020, 3, 1) to LocalDate.of(2020, 3, 15)
+                send("0", vedtak(fom1, tom1))
+                feedRequest(sistLesteSekvensId = 0, maxAntall = 10).also { feed ->
+                    assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic bare har ett element")
+                }
+
+                val (fom2, tom2) = LocalDate.of(2020, 4, 1) to LocalDate.of(2020, 4, 15)
+                send("0", vedtak(fom2, tom2))
+                feedRequest(sistLesteSekvensId = 0, maxAntall = 10).also { feed ->
+                    assertTrue(
+                        feed.elementer.isNotEmpty(), "Feed skal ha elementer når det er mer enn ett element på topic"
+                    )
+                    assertEquals(2, feed.elementer.size)
+                    assertEquals(fom1.toString(), feed.elementer[0].innhold.utbetalingsreferanse)
+                    assertEquals(fom2.toString(), feed.elementer[1].innhold.utbetalingsreferanse)
+                }
             }
         }
-        embeddedKafkaEnvironment.close()
     }
 
-    private fun loadTestConfig(): Properties = Properties().also {
-        it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
+    private suspend fun TestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
+        return client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall").body<Feed>()
     }
 }
 

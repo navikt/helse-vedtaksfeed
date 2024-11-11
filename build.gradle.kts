@@ -23,7 +23,6 @@ repositories {
         }
     }
     maven("https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
-    maven("https://packages.confluent.io/maven/")
 }
 
 dependencies {
@@ -37,18 +36,10 @@ dependencies {
 
     testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
     testImplementation("com.github.navikt.tbd-libs:naisful-test-app:$tbdLibsVersion")
+    testImplementation("com.github.navikt.tbd-libs:kafka-test:$tbdLibsVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    testImplementation("no.nav:kafka-embedded-env:3.2.5") {
-        constraints {
-            implementation("org.apache.commons:commons-compress") {
-                version { require("1.24.0") }
-                because("no.nav:kafka-embedded-env:3.2.5 drar inn sårbar versjon 1.22")
-            }
-        }
-    }
     testImplementation("org.awaitility:awaitility:4.0.3")
 
     testImplementation("org.wiremock:wiremock:$wireMockVersion") {
@@ -91,5 +82,10 @@ tasks {
         testLogging {
             events("passed", "skipped", "failed")
         }
+
+        systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+        systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+        systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+        systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism", "8")
     }
 }

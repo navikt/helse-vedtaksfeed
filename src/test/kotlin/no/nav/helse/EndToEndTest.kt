@@ -6,6 +6,9 @@ import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import com.github.navikt.tbd_libs.result_object.ok
 import com.github.navikt.tbd_libs.speed.IdentResponse
 import com.github.navikt.tbd_libs.speed.SpeedClient
+import com.github.navikt.tbd_libs.test_support.KafkaContainers
+import com.github.navikt.tbd_libs.test_support.TestTopic
+import com.github.navikt.tbd_libs.test_support.kafkaTest
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
@@ -17,36 +20,22 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import no.nav.common.KafkaEnvironment
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.net.*
 import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+val kafkaContainer = KafkaContainers.container("vedtaksfeed")
+
 internal class EndToEndTest {
-    private lateinit var internVedtakProducer: KafkaProducer<String, Vedtak>
-    private val rapid = TestRapid().apply {
-        setupRivers { fødselsnummer, vedtak ->
-            internVedtakProducer.send(ProducerRecord(internTopic, fødselsnummer, vedtak)).get().offset()
-        }
-    }
 
     @Test
     fun `får tilbake elementer fra feed`() = e2e {
@@ -170,8 +159,8 @@ internal class EndToEndTest {
         }
     }
 
-    private suspend fun TestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
-        return client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall") {
+    private suspend fun VedtaksfeedTestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
+        return ktorTest.client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall") {
             val token = jwtStub.createTokenFor(
                 subject = infotrygClientId,
                 audience = vedtaksfeedAudience
@@ -180,13 +169,11 @@ internal class EndToEndTest {
         }.body<Feed>()
     }
 
-    private lateinit var appBaseUrl: String
     private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
     private lateinit var jwtStub: JwtStub
 
     private val infotrygClientId = "my_cool_client_id"
     private val vedtaksfeedAudience = "vedtaksfeed_client_id"
-    private val randomPort = ServerSocket(0).use { it.localPort }
     private val jwtIssuer = mockAuthentication()
 
     private val speedClient = mockk<SpeedClient> {
@@ -198,42 +185,43 @@ internal class EndToEndTest {
         ).ok()
     }
 
-    private val internTopic = "tbd.infotrygd.vedtaksfeed.v1"
-    private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
-    private val embeddedKafkaEnvironment = KafkaEnvironment(
-        autoStart = false,
-        noOfBrokers = 1,
-        topicInfos = topicInfos,
-        withSchemaRegistry = false,
-        withSecurity = false
-    )
+    private fun e2e(testblokk: suspend VedtaksfeedTestContext.() -> Unit) {
+        kafkaTest(kafkaContainer) {
+            val vedtaksfeedConsumer = KafkaConsumer(Properties().apply {
+                putAll(kafkaContainer.connectionProperties)
+                this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+                this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+                this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            }, StringDeserializer(), VedtakDeserializer())
 
-    private fun e2e(testblokk: suspend TestContext.() -> Unit) = naisfulTestApp(
-        testApplicationModule = {
-            val azureConfig = AzureAdAppConfig(
-                clientId = vedtaksfeedAudience,
-                configurationUrl = "${wireMockServer.baseUrl()}/config"
-            )
-            vedtaksfeed(
-                internTopic,
-                KafkaConsumer(loadTestConfig().toSeekingConsumer(), StringDeserializer(), VedtakDeserializer()),
-                azureConfig,
-                speedClient
-            )
-        },
-        objectMapper = objectMapper,
-        meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
-        testblokk = testblokk
-    )
+            val rapid = TestRapid().apply {
+                setupRivers { fødselsnummer, vedtak ->
+                    send(fødselsnummer, vedtak, StringSerializer(), VedtakSerializer()).get().offset()
+                }
+            }
 
-    private fun Properties.toSeekingConsumer() = Properties().also {
-        it.putAll(this)
-        it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = VedtakDeserializer::class.java
-        it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
-        it[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
-        it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            naisfulTestApp(
+                testApplicationModule = {
+                    val azureConfig = AzureAdAppConfig(
+                        clientId = vedtaksfeedAudience,
+                        configurationUrl = "${wireMockServer.baseUrl()}/config"
+                    )
+                    vedtaksfeed(topicnavn, vedtaksfeedConsumer, azureConfig, speedClient)
+                },
+                objectMapper = objectMapper,
+                meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
+                testblokk = {
+                    testblokk(VedtaksfeedTestContext(rapid, this@kafkaTest, this))
+                }
+            )
+        }
     }
+
+    private data class VedtaksfeedTestContext(
+        val rapid: TestRapid,
+        val testTopic: TestTopic,
+        val ktorTest: TestContext
+    )
 
     private fun mockAuthentication(): String {
         wireMockServer.start()
@@ -253,38 +241,6 @@ internal class EndToEndTest {
         return jwtIssuer
     }
 
-    private fun loadTestConfig(): Properties = Properties().also {
-        it["bootstrap.servers"] = embeddedKafkaEnvironment.brokersURL
-    }
-
-    private fun Properties.toProducerConfig(): Properties = Properties().also {
-        it.putAll(this)
-        it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-        it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = VedtakSerializer::class.java
-        put(ProducerConfig.ACKS_CONFIG, "1")
-        put(ProducerConfig.LINGER_MS_CONFIG, "0")
-        put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
-    }
-
-    @BeforeAll
-    fun setup() {
-        embeddedKafkaEnvironment.start()
-        appBaseUrl = "http://localhost:$randomPort"
-        internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-    }
-
-    @AfterEach
-    fun reset() {
-        rapid.reset()
-        embeddedKafkaEnvironment.adminClient?.use { adminClient ->
-
-            adminClient.deleteTopics(topicInfos.map { it.name })
-            adminClient.createTopics(topicInfos.map {
-                NewTopic(it.name, it.partitions, 1)
-            })
-        }
-    }
-
     private fun setupTestData(rapid: TestRapid) {
         repeat(100) {
             rapid.sendTestMessage(utbetalingUtbetalt())
@@ -292,11 +248,6 @@ internal class EndToEndTest {
         rapid.sendTestMessage(annullering)
         rapid.sendTestMessage(utbetalingUtbetalt("REVURDERING", stønadsdager = 79))
         rapid.sendTestMessage(utbetalingTilBruker())
-    }
-
-    @AfterAll
-    fun tearDown() {
-        embeddedKafkaEnvironment.close()
     }
 }
 
