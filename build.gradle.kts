@@ -28,9 +28,6 @@ repositories {
 
 dependencies {
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-jackson:$ktorVersion")
-    implementation("io.ktor:ktor-server-call-id:$ktorVersion")
     implementation("commons-codec:commons-codec:1.15")
 
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
@@ -39,6 +36,7 @@ dependencies {
     implementation("com.github.navikt.tbd-libs:speed-client:$tbdLibsVersion")
 
     testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
+    testImplementation("com.github.navikt.tbd-libs:naisful-test-app:$tbdLibsVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -52,9 +50,6 @@ dependencies {
         }
     }
     testImplementation("org.awaitility:awaitility:4.0.3")
-
-    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
 
     testImplementation("org.wiremock:wiremock:$wireMockVersion") {
         constraints {

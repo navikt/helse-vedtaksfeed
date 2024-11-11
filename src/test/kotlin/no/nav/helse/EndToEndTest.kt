@@ -1,6 +1,7 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.navikt.tbd_libs.naisful.test.TestContext
+import com.github.navikt.tbd_libs.naisful.test.naisfulTestApp
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import com.github.navikt.tbd_libs.result_object.ok
 import com.github.navikt.tbd_libs.speed.IdentResponse
@@ -8,11 +9,14 @@ import com.github.navikt.tbd_libs.speed.SpeedClient
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
-import io.ktor.http.*
-import io.ktor.server.cio.*
-import io.ktor.server.engine.*
+import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -30,7 +34,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.io.InputStream
 import java.net.*
 import java.time.LocalDate
 import java.util.*
@@ -46,22 +49,22 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun `får tilbake elementer fra feed`() {
+    fun `får tilbake elementer fra feed`() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=0".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 1)
                 assertTrue(feed.elementer.isNotEmpty())
             }
         }
     }
 
     @Test
-    fun `får tilbake elementer fra feed med antall`() {
+    fun `får tilbake elementer fra feed med antall`() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=0&maxAntall=10".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 10)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
                 assertEquals(80, feed.elementer.first().innhold.forbrukteStoenadsdager)
@@ -70,50 +73,42 @@ internal class EndToEndTest {
             }
         }
 
-        "/feed?sistLesteSekvensId=9&maxAntall=10".httpGet {
-            val feed = objectMapper.readValue<Feed>(this)
+        runBlocking {
+            val feed = feedRequest(sistLesteSekvensId = 9, maxAntall = 10)
             assertEquals(10, feed.elementer.size)
             assertEquals(10, feed.elementer.first().sekvensId)
             assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
         }
 
-        "/feed?sistLesteSekvensId=200".httpGet {
-            val feed = objectMapper.readValue<Feed>(this)
+        runBlocking {
+            val feed = feedRequest(sistLesteSekvensId = 200, maxAntall = 1)
             assertTrue(feed.elementer.isEmpty())
         }
 
-        "/feed?sistLesteSekvensId=81&maxAntall=50".httpGet {
-            val feed = objectMapper.readValue<Feed>(this)
+        runBlocking {
+            val feed = feedRequest(sistLesteSekvensId = 81, maxAntall = 50)
             assertEquals(21, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
     }
 
     @Test
-    fun `kan spørre flere ganger og få samme resultat`() {
+    fun `kan spørre flere ganger og få samme resultat`() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            val url = "/feed?sistLesteSekvensId=0&maxAntall=10"
-            url.httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 10)
                 assertTrue(feed.elementer.isNotEmpty())
-                val content = this
-
-                url.httpGet {
-                    assertEquals(content, this)
-                }
             }
         }
     }
 
-
     @Test
-    fun annulleringV1() {
+    fun annulleringV1() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=99&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
-
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 99, maxAntall = 1)
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2018, 1, 1), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2018, 2, 1), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -125,11 +120,11 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun utbetalingUtbetaltTest() {
+    fun utbetalingUtbetaltTest() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=1&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 11, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -142,11 +137,11 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun `utbetaling utbetalt med et hint av revurdering`() {
+    fun `utbetaling utbetalt med et hint av revurdering`() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=100&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 100, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2020, 8, 9), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2020, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -159,11 +154,11 @@ internal class EndToEndTest {
     }
 
     @Test
-    fun `les ut utbetaling til bruker`(){
+    fun `les ut utbetaling til bruker`() = e2e {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            "/feed?sistLesteSekvensId=101&maxAntall=1".httpGet {
-                val feed = objectMapper.readValue<Feed>(this)
+            runBlocking {
+                val feed = feedRequest(sistLesteSekvensId = 101, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
                 assertEquals(LocalDate.of(2021, 8, 17), feed.elementer[0].innhold.foersteStoenadsdag)
                 assertEquals(LocalDate.of(2021, 9, 1), feed.elementer[0].innhold.sisteStoenadsdag)
@@ -175,54 +170,15 @@ internal class EndToEndTest {
         }
     }
 
-    private fun String.httpGet(
-        expectedStatus: HttpStatusCode = HttpStatusCode.OK,
-        testBlock: String.() -> Unit = {}
-    ) {
-        val token = jwtStub.createTokenFor(
-            subject = infotrygClientId,
-            audience = vedtaksfeedAudience
-        )
-
-        log.info("sender request til $this med token=Bearer $token")
-
-        val connection = appBaseUrl.handleRequest(HttpMethod.Get, this,
-            builder = {
-                setRequestProperty(HttpHeaders.Authorization, "Bearer $token")
-                readTimeout = 10000
-            })
-
-        assertEquals(expectedStatus.value, connection.responseCode)
-        connection.responseBody.testBlock()
+    private suspend fun TestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
+        return client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall") {
+            val token = jwtStub.createTokenFor(
+                subject = infotrygClientId,
+                audience = vedtaksfeedAudience
+            )
+            bearerAuth(token)
+        }.body<Feed>()
     }
-
-    private fun String.handleRequest(
-        method: HttpMethod,
-        path: String,
-        builder: HttpURLConnection.() -> Unit = {}
-    ): HttpURLConnection {
-        val url = URI("$this$path").toURL()
-        val con = url.openConnection() as HttpURLConnection
-        con.requestMethod = method.value
-
-        con.builder()
-
-        con.connectTimeout = 1000
-        con.readTimeout = 5000
-
-        return con
-    }
-
-    private val HttpURLConnection.responseBody: String
-        get() {
-            val stream: InputStream? = if (responseCode in 200..299) {
-                inputStream
-            } else {
-                errorStream
-            }
-
-            return stream?.use { it.bufferedReader().readText() } ?: ""
-        }
 
     private lateinit var appBaseUrl: String
     private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
@@ -241,7 +197,6 @@ internal class EndToEndTest {
             kilde = IdentResponse.KildeResponse.PDL
         ).ok()
     }
-    private val ktor = setupKtor()
 
     private val internTopic = "tbd.infotrygd.vedtaksfeed.v1"
     private val topicInfos = listOf(KafkaEnvironment.TopicInfo(internTopic, partitions = 1))
@@ -253,14 +208,8 @@ internal class EndToEndTest {
         withSecurity = false
     )
 
-    private fun setupKtor() = embeddedServer(CIO,
-        environment = applicationEnvironment {},
-        configure = {
-            connector {
-                port = randomPort
-            }
-        },
-        module = {
+    private fun e2e(testblokk: suspend TestContext.() -> Unit) = naisfulTestApp(
+        testApplicationModule = {
             val azureConfig = AzureAdAppConfig(
                 clientId = vedtaksfeedAudience,
                 configurationUrl = "${wireMockServer.baseUrl()}/config"
@@ -271,7 +220,10 @@ internal class EndToEndTest {
                 azureConfig,
                 speedClient
             )
-        }
+        },
+        objectMapper = objectMapper,
+        meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
+        testblokk = testblokk
     )
 
     private fun Properties.toSeekingConsumer() = Properties().also {
@@ -290,7 +242,7 @@ internal class EndToEndTest {
             .until {
                 try {
                     Socket("localhost", wireMockServer.port()).use { it.isConnected }
-                } catch (err: Exception) {
+                } catch (_: Exception) {
                     false
                 }
             }
@@ -319,9 +271,8 @@ internal class EndToEndTest {
         embeddedKafkaEnvironment.start()
         appBaseUrl = "http://localhost:$randomPort"
         internVedtakProducer = KafkaProducer<String, Vedtak>(loadTestConfig().toProducerConfig())
-
-        ktor.start(false)
     }
+
     @AfterEach
     fun reset() {
         rapid.reset()
@@ -346,7 +297,6 @@ internal class EndToEndTest {
     @AfterAll
     fun tearDown() {
         embeddedKafkaEnvironment.close()
-        ktor.stop(5000, 5000)
     }
 }
 

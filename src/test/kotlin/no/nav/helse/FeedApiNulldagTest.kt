@@ -1,12 +1,15 @@
 package no.nav.helse
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.navikt.tbd_libs.naisful.test.naisfulTestApp
 import com.github.navikt.tbd_libs.result_object.ok
 import com.github.navikt.tbd_libs.speed.IdentResponse
 import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.server.testing.*
+import io.ktor.server.routing.routing
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import no.nav.common.KafkaEnvironment
@@ -63,10 +66,13 @@ internal class FeedApiNulldagTest {
         val kafkaProducer = KafkaProducer<String, String>(testKafkaProperties)
         val consumer = KafkaConsumer<String, Vedtak>(loadTestConfig().toSeekingConsumer())
 
-        testApplication {
-            application { installJacksonFeature() }
-            routing { feedApi(testTopic, consumer, speedClient) }
-
+        naisfulTestApp(
+            testApplicationModule = {
+                routing { feedApi(testTopic, consumer, speedClient) }
+            },
+            objectMapper = objectMapper,
+            meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
+        ) {
             client.get("/feed?sistLesteSekvensId=0").let { response ->
                 val feed = objectMapper.readValue<Feed>(response.bodyAsText())
                 assertTrue(feed.elementer.isEmpty(), "Feed skal være tom når topic er tom")
