@@ -33,7 +33,7 @@ import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-val kafkaContainer = KafkaContainers.container("vedtaksfeed")
+val kafkaContainer = KafkaContainers.container("vedtaksfeed", minPoolSize = 4)
 
 internal class EndToEndTest {
 
