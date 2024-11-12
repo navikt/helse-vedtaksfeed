@@ -42,17 +42,6 @@ internal class EndToEndTest {
         setupTestData(rapid)
         await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             runBlocking {
-                val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 1)
-                assertTrue(feed.elementer.isNotEmpty())
-            }
-        }
-    }
-
-    @Test
-    fun `får tilbake elementer fra feed med antall`() = e2e {
-        setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 10)
                 assertEquals(10, feed.elementer.size)
                 assertEquals(0, feed.elementer.first().sekvensId)
