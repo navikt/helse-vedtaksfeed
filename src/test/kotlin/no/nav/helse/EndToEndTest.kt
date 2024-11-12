@@ -51,20 +51,19 @@ internal class EndToEndTest {
             }
         }
 
-        runBlocking {
-            val feed = feedRequest(sistLesteSekvensId = 9, maxAntall = 10)
+        feedRequest(sistLesteSekvensId = 9, maxAntall = 10).also { feed ->
             assertEquals(10, feed.elementer.size)
             assertEquals(10, feed.elementer.first().sekvensId)
             assertEquals(9, feed.elementer.last().sekvensId - feed.elementer.first().sekvensId)
         }
 
-        runBlocking {
-            val feed = feedRequest(sistLesteSekvensId = 200, maxAntall = 1)
-            assertTrue(feed.elementer.isEmpty())
+        feedRequest(sistLesteSekvensId = 200, maxAntall = 1).also { feed ->
+            assertTrue(feed.elementer.isEmpty()) {
+                "Forventer at feed er tom fom sistLesteSekvensId = 200. Det var ${feed.elementer.size} elementer i listen"
+            }
         }
 
-        runBlocking {
-            val feed = feedRequest(sistLesteSekvensId = 81, maxAntall = 50)
+        feedRequest(sistLesteSekvensId = 81, maxAntall = 50).also { feed ->
             assertEquals(21, feed.elementer.size)
             assertFalse(feed.inneholderFlereElementer)
         }
