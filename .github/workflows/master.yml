@@ -22,6 +22,14 @@ jobs:
       run: ./gradlew test build
       env:
         ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
+    - name: Store reports
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: reports
+        path: |
+            **/build/reports/
+            **/build/test-results/
     - name: build docker image
       uses: nais/docker-build-push@v0
       id: docker-build-push
