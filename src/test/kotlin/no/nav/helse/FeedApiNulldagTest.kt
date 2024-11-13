@@ -13,15 +13,27 @@ import io.micrometer.prometheusmetrics.PrometheusConfig
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.util.Properties
+import kotlin.collections.set
 
 internal class FeedApiNulldagTest {
     @Test
     fun `får tilbake elementer fra feed`() {
         kafkaTest(kafkaContainer) {
+            val vedtaksfeedConsumer = KafkaConsumer(Properties().apply {
+                putAll(kafkaContainer.connectionProperties)
+                this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+                this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+                this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            }, StringDeserializer(), VedtakDeserializer())
+
             val speedClient = mockk<SpeedClient> {
                 every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
                     fødselsnummer = "fnr",
@@ -33,7 +45,7 @@ internal class FeedApiNulldagTest {
 
             naisfulTestApp(
                 testApplicationModule = {
-                    routing { feedApi(TestVedtakfeedConsumer(this@kafkaTest), speedClient) }
+                    routing { feedApi(VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(topicnavn, vedtaksfeedConsumer), speedClient) }
                 },
                 objectMapper = objectMapper,
                 meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),

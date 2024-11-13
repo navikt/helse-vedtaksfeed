@@ -20,7 +20,8 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
@@ -30,16 +31,18 @@ import org.junit.jupiter.api.Test
 import java.net.*
 import java.time.Duration
 import java.time.LocalDate
+import java.util.Properties
 import java.util.concurrent.TimeUnit
+import kotlin.collections.set
 
-val kafkaContainer = KafkaContainers.container("vedtaksfeed", minPoolSize = 4)
+val kafkaContainer = KafkaContainers.container("vedtaksfeed")
 
 internal class EndToEndTest {
 
     @Test
     fun `får tilbake elementer fra feed`() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 10)
                 assertEquals(10, feed.elementer.size)
@@ -71,7 +74,7 @@ internal class EndToEndTest {
     @Test
     fun `kan spørre flere ganger og få samme resultat`() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 0, maxAntall = 10)
                 assertTrue(feed.elementer.isNotEmpty())
@@ -82,7 +85,7 @@ internal class EndToEndTest {
     @Test
     fun annulleringV1() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 99, maxAntall = 1)
                 assertEquals("SykepengerAnnullert", feed.elementer[0].type)
@@ -98,7 +101,7 @@ internal class EndToEndTest {
     @Test
     fun utbetalingUtbetaltTest() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 11, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -115,7 +118,7 @@ internal class EndToEndTest {
     @Test
     fun `utbetaling utbetalt med et hint av revurdering`() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 100, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -132,7 +135,7 @@ internal class EndToEndTest {
     @Test
     fun `les ut utbetaling til bruker`() = e2e {
         setupTestData(rapid)
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted {
             runBlocking {
                 val feed = feedRequest(sistLesteSekvensId = 101, maxAntall = 1)
                 assertEquals("SykepengerUtbetalt_v1", feed.elementer[0].type)
@@ -174,6 +177,13 @@ internal class EndToEndTest {
 
     private fun e2e(testblokk: suspend VedtaksfeedTestContext.() -> Unit) {
         kafkaTest(kafkaContainer) {
+            val vedtaksfeedConsumer = KafkaConsumer(Properties().apply {
+                putAll(kafkaContainer.connectionProperties)
+                this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+                this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+                this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            }, StringDeserializer(), VedtakDeserializer())
+
             val rapid = TestRapid().apply {
                 setupRivers { fødselsnummer, vedtak ->
                     send(fødselsnummer, vedtak, StringSerializer(), VedtakSerializer()).get().offset()
@@ -186,7 +196,7 @@ internal class EndToEndTest {
                         clientId = vedtaksfeedAudience,
                         configurationUrl = "${wireMockServer.baseUrl()}/config"
                     )
-                    vedtaksfeed(TestVedtakfeedConsumer(this@kafkaTest), azureConfig, speedClient)
+                    vedtaksfeed(VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(topicnavn, vedtaksfeedConsumer), azureConfig, speedClient)
                 },
                 objectMapper = objectMapper,
                 meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
@@ -311,37 +321,3 @@ private fun utbetalingTilBruker() = """
       }
     }
 """
-
-class TestVedtakfeedConsumer(private val testTopic: TestTopic): VedtaksfeedConsumer {
-    /* test-topicene gjenbrukes og det kan ligge data på topicet fra eldre tester.
-        hensyntar derfor siste gjeldende offset og bruker det som et slags "nullpunkt" her
-     */
-    val endOffsetsForTestTopic: Long
-    val partition = TopicPartition(testTopic.topicnavn, 0)
-
-    init {
-        // end offsets gir offseten den neste meldingen på partisjonen kommer til å ha
-        val endOffsets = testTopic.consumer.endOffsets(listOf(partition))
-        endOffsetsForTestTopic = endOffsets.values.singleOrNull() ?: 0L
-    }
-
-    private fun søkTilNesteSekvens(sistLesteSekvensId: Long): Boolean {
-        if (testTopic.consumer.assignment().isEmpty()) return true
-        val skip = if (sistLesteSekvensId == 0L) 0L else sistLesteSekvensId + 1
-        val offset = endOffsetsForTestTopic + skip
-        val sisteOffset = testTopic.consumer.endOffsets(listOf(partition)).values.singleOrNull()
-        if (sisteOffset != null && offset >= sisteOffset) return false
-        testTopic.consumer.seek(partition, offset)
-        return true
-    }
-
-    override fun lesFeed(sistLesteSekvensId: Long, antall: Int): List<Pair<Long, Vedtak>> {
-        if (!søkTilNesteSekvens(sistLesteSekvensId)) return emptyList()
-        return testTopic.pollRecords(
-            keyDeserializer = StringDeserializer(),
-            valueDeserializer = VedtakDeserializer(),
-            timeout = Duration.ofMillis(500),
-            maxWaitForAtLeastOneRecord = Duration.ofSeconds(10)
-        ).map { (it.offset() - endOffsetsForTestTopic) to it.value() }
-    }
-}
