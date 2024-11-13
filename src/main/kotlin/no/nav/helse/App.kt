@@ -44,7 +44,10 @@ fun main() {
     val config = AivenConfig.default
 
     val vedtaksfeedProducer = KafkaProducer(config.producerConfig(Properties()), StringSerializer(), VedtakSerializer())
-    val vedtaksfeedConsumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer())
+    val vedtaksfeedConsumer = VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(
+        topic = vedtaksfeedtopic,
+        consumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer())
+    )
 
     val azureClient = createAzureTokenClientFromEnvironment(env)
     val speedClient = SpeedClient(HttpClient.newHttpClient(), objectMapper, azureClient)
@@ -57,7 +60,7 @@ fun main() {
                     clientId = env.getValue("AZURE_APP_CLIENT_ID"),
                     configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
                 )
-                vedtaksfeed(vedtaksfeedtopic, vedtaksfeedConsumer, azureConfig, speedClient)
+                vedtaksfeed(vedtaksfeedConsumer, azureConfig, speedClient)
             }
         }
     )
@@ -74,8 +77,7 @@ internal fun RapidsConnection.setupRivers(publisher: Publisher) {
 }
 
 internal fun Application.vedtaksfeed(
-    topic: String,
-    consumer: KafkaConsumer<String, Vedtak>,
+    consumer: VedtaksfeedConsumer,
     azureConfig: AzureAdAppConfig,
     speedClient: SpeedClient
 ) {
@@ -86,7 +88,7 @@ internal fun Application.vedtaksfeed(
     }
     routing {
         authenticate {
-            feedApi(topic, consumer, speedClient)
+            feedApi(consumer, speedClient)
         }
     }
 }

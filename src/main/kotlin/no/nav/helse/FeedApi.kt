@@ -13,28 +13,47 @@ import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.UUID
+import kotlin.ranges.until
 
 val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
 private const val ANTALL_POLL = 5
 private const val STANDARD_ANTALL = 100
 
-internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak>, speedClient: SpeedClient) {
-    val topicPartition = TopicPartition(topic, 0)
-    consumer.assign(listOf(topicPartition))
+interface VedtaksfeedConsumer {
+    fun lesFeed(sistLesteSekvensId: Long, antall: Int): List<Pair<Long, Vedtak>>
 
+    class KafkaVedtaksfeedConsumer(private val topic: String, private val consumer: KafkaConsumer<String, Vedtak>) : VedtaksfeedConsumer {
+        override fun lesFeed(sistLesteSekvensId: Long, antall: Int): List<Pair<Long, Vedtak>> {
+            val topicPartition = TopicPartition(topic, 0)
+            try {
+                consumer.assign(listOf(topicPartition))
+                val seekTil = if (sistLesteSekvensId == 0L) 0L else sistLesteSekvensId + 1L
+                consumer.seek(topicPartition, seekTil)
+
+                return 0.until(ANTALL_POLL)
+                    .flatMap { index ->
+                        consumer.poll(Duration.ofMillis(500))
+                            .also {
+                                sikkerlogg.info("fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                                log.info("fikk ${it.count()} meldinger på poll nr ${index + 1}")
+                            }
+                    }
+                    .map { it.offset() to it.value() }
+            } finally {
+                consumer.assign(emptyList())
+            }
+        }
+    }
+}
+
+internal fun Route.feedApi(consumer: VedtaksfeedConsumer, speedClient: SpeedClient) {
     get("/feed") {
         val maksAntall = this.call.parameters["maxAntall"]?.toInt() ?: STANDARD_ANTALL
         val sisteLest = this.call.parameters["sistLesteSekvensId"]?.toLong()
             ?: throw IllegalArgumentException("Parameter sekvensNr cannot be empty")
         val callId = call.callId ?: UUID.randomUUID().toString()
-        val seekTil = if (sisteLest == 0L) 0L else sisteLest + 1L
-        consumer.seek(topicPartition, seekTil)
 
-        val records = 0.until(ANTALL_POLL)
-            .flatMap { index -> consumer.poll(Duration.ofMillis(500)).also {
-                sikkerlogg.info("callId=${callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
-                log.info("callId=${callId} fikk ${it.count()} meldinger på poll nr ${index + 1}")
-            } }
+        val records = consumer.lesFeed(sisteLest, maksAntall)
             .takeUnless { sisteLest == 0L && detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(it) }
             ?: emptyList()
         val feed = records
@@ -57,8 +76,8 @@ internal fun Route.feedApi(topic: String, consumer: KafkaConsumer<String, Vedtak
  * Løsningen er at vi ikke leverer noen meldinger før det er (minst) to meldinger på topic-en,
  * slik at neste poll vil lese fra sisteLest = 1 (eller mer).
  */
-private fun detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(meldinger: List<ConsumerRecord<String, Vedtak>>) =
-    meldinger.size == 1 && meldinger.first().offset() == 0L
+private fun detErBareEnMeldingEnnåOgDetErDenFørstePåTopic(meldinger: List<Pair<Long, *>>) =
+    meldinger.size == 1 && meldinger.first().first == 0L
 
 
 private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
@@ -67,23 +86,22 @@ private fun List<Feed.Element>.toFeed(maksAntall: Int) = Feed(
     elementer = this
 )
 
-private fun ConsumerRecord<String, Vedtak>.toFeedElement(speedClient: SpeedClient, callId: String) =
-    this.value().let { vedtak ->
-        val identer = retryBlocking { speedClient.hentFødselsnummerOgAktørId(vedtak.fødselsnummer, callId).getOrThrow() }
-        Feed.Element(
-            type = toExternalName(vedtak.type),
-            sekvensId = this.offset(),
-            metadata = Feed.Element.Metadata(opprettetDato = vedtak.opprettet.toLocalDate()),
-            innhold = Feed.Element.Innhold(
-                aktoerId = identer.aktørId,
-                fnr = vedtak.fødselsnummer,
-                foersteStoenadsdag = vedtak.førsteStønadsdag,
-                sisteStoenadsdag = vedtak.sisteStønadsdag,
-                utbetalingsreferanse = vedtak.førsteFraværsdag,
-                forbrukteStoenadsdager = vedtak.forbrukteStønadsdager
-            )
+private fun Pair<Long, Vedtak>.toFeedElement(speedClient: SpeedClient, callId: String): Feed.Element {
+    val identer = retryBlocking { speedClient.hentFødselsnummerOgAktørId(second.fødselsnummer, callId).getOrThrow() }
+    return Feed.Element(
+        type = toExternalName(second.type),
+        sekvensId = first,
+        metadata = Feed.Element.Metadata(opprettetDato = second.opprettet.toLocalDate()),
+        innhold = Feed.Element.Innhold(
+            aktoerId = identer.aktørId,
+            fnr = identer.fødselsnummer,
+            foersteStoenadsdag = second.førsteStønadsdag,
+            sisteStoenadsdag = second.sisteStønadsdag,
+            utbetalingsreferanse = second.førsteFraværsdag,
+            forbrukteStoenadsdager = second.forbrukteStønadsdager
         )
-    }
+    )
+}
 
 /*
 Infotrygd har en lengdebegrensning på 21 tegn på type-feltet. For å slippe konflikter med data som allerede ligger på
