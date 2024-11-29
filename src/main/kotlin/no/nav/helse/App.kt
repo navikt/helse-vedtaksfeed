@@ -10,12 +10,18 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.navikt.tbd_libs.azure.createAzureTokenClientFromEnvironment
 import com.github.navikt.tbd_libs.kafka.AivenConfig
+import com.github.navikt.tbd_libs.naisful.naisApp
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import com.github.navikt.tbd_libs.speed.SpeedClient
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.request.header
 import io.ktor.server.routing.*
+import io.micrometer.core.instrument.Clock
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import no.nav.helse.rapids_rivers.RapidApplication
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -51,16 +57,40 @@ fun main() {
 
     val azureClient = createAzureTokenClientFromEnvironment(env)
     val speedClient = SpeedClient(HttpClient.newHttpClient(), objectMapper, azureClient)
+    val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT, PrometheusRegistry.defaultRegistry, Clock.SYSTEM)
 
     RapidApplication.create(
         env = env,
+        meterRegistry = meterRegistry,
         builder = {
-            withKtorModule {
-                val azureConfig = AzureAdAppConfig(
-                    clientId = env.getValue("AZURE_APP_CLIENT_ID"),
-                    configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
-                )
-                vedtaksfeed(vedtaksfeedConsumer, azureConfig, speedClient)
+            withKtor { preStopHook, rapid ->
+                naisApp(
+                    meterRegistry = meterRegistry,
+                    objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS),
+                    applicationLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.App"),
+                    callLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.CallLogging"),
+                    naisEndpoints = com.github.navikt.tbd_libs.naisful.NaisEndpoints.Default,
+                    timersConfig = { call, _ ->
+                        this
+                            .tag("azp_name", call.principal<JWTPrincipal>()?.get("azp_name") ?: "n/a")
+                            // https://github.com/linkerd/polixy/blob/main/DESIGN.md#l5d-client-id-client-id
+                            // eksempel: <APP>.<NAMESPACE>.serviceaccount.identity.linkerd.cluster.local
+                            .tag("konsument", call.request.header("L5d-Client-Id") ?: "n/a")
+                    },
+                    mdcEntries = mapOf(
+                        "azp_name" to { call: ApplicationCall -> call.principal<JWTPrincipal>()?.get("azp_name") },
+                        "konsument" to { call: ApplicationCall -> call.request.header("L5d-Client-Id") }
+                    ),
+                    aliveCheck = rapid::isReady,
+                    readyCheck = rapid::isReady,
+                    preStopHook = preStopHook::handlePreStopRequest
+                ) {
+                    val azureConfig = AzureAdAppConfig(
+                        clientId = env.getValue("AZURE_APP_CLIENT_ID"),
+                        configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
+                    )
+                    vedtaksfeed(vedtaksfeedConsumer, azureConfig, speedClient)
+                }
             }
         }
     )

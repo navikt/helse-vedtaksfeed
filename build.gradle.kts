@@ -1,6 +1,6 @@
 val junitJupiterVersion = "5.11.3"
 val ktorVersion = "3.0.1"
-val rapidsAndRiversVersion = "2024112511071732529266.253c42b70448"
+val rapidsAndRiversVersion = "2024112911471732877250.f6df6f41226b"
 val tbdLibsVersion = "2024.11.25-10.59-6f263a10"
 val wireMockVersion = "3.9.2"
 val mockkVersion = "1.13.13"
@@ -26,6 +26,7 @@ repositories {
 }
 
 dependencies {
+    implementation("com.github.navikt.tbd-libs:naisful-app:$tbdLibsVersion")
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("commons-codec:commons-codec:1.15")
 
