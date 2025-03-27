@@ -1,9 +1,9 @@
-val junitJupiterVersion = "5.11.3"
-val ktorVersion = "3.0.1"
-val rapidsAndRiversVersion = "2025012712551737978926.de930d8e0feb"
-val tbdLibsVersion = "2025.01.27-12.50-76316f3b"
+val junitJupiterVersion = "5.12.1"
+val ktorVersion = "3.1.2"
+val rapidsAndRiversVersion = "2025032719521743101565.4abbf0c3af65"
+val tbdLibsVersion = "2025.03.27-18.30-c228796d"
 val wireMockVersion = "3.9.2"
-val mockkVersion = "1.13.13"
+val mockkVersion = "1.13.17"
 plugins {
     kotlin("jvm") version "2.1.20"
 }
