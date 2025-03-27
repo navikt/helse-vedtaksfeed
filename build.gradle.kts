@@ -5,7 +5,7 @@ val tbdLibsVersion = "2025.01.27-12.50-76316f3b"
 val wireMockVersion = "3.9.2"
 val mockkVersion = "1.13.13"
 plugins {
-    kotlin("jvm") version "2.0.21"
+    kotlin("jvm") version "2.1.20"
 }
 
 repositories {
