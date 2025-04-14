@@ -4,14 +4,12 @@ import com.github.navikt.tbd_libs.naisful.test.TestContext
 import com.github.navikt.tbd_libs.naisful.test.naisfulTestApp
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import com.github.navikt.tbd_libs.result_object.ok
+import com.github.navikt.tbd_libs.signed_jwt_issuer_test.Issuer
 import com.github.navikt.tbd_libs.speed.IdentResponse
 import com.github.navikt.tbd_libs.speed.SpeedClient
 import com.github.navikt.tbd_libs.test_support.KafkaContainers
 import com.github.navikt.tbd_libs.test_support.TestTopic
 import com.github.navikt.tbd_libs.test_support.kafkaTest
-import com.github.tomakehurst.wiremock.WireMockServer
-import com.github.tomakehurst.wiremock.client.WireMock
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -28,16 +26,34 @@ import org.awaitility.Awaitility.await
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.net.*
 import java.time.Duration
 import java.time.LocalDate
 import java.util.Properties
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.SECONDS
 import kotlin.collections.set
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS
 
 val kafkaContainer = KafkaContainers.container("vedtaksfeed")
 
+@TestInstance(PER_CLASS)
 internal class EndToEndTest {
+
+    private val vedtaksfeedAudience = "vedtaksfeed_client_id"
+    private val issuer = Issuer("jwtIssuer", vedtaksfeedAudience)
+
+    @BeforeAll
+    fun setup() {
+        issuer.start()
+        await("vent på Issuer har startet").atMost(5, SECONDS).until { issuer.startet() }
+    }
+
+    @AfterAll
+    fun tearDown() {
+        issuer.stop()
+    }
 
     @Test
     fun `får tilbake elementer fra feed`() = e2e {
@@ -151,20 +167,9 @@ internal class EndToEndTest {
 
     private suspend fun VedtaksfeedTestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
         return ktorTest.client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall") {
-            val token = jwtStub.createTokenFor(
-                subject = infotrygClientId,
-                audience = vedtaksfeedAudience
-            )
-            bearerAuth(token)
+            bearerAuth(issuer.accessToken())
         }.body<Feed>()
     }
-
-    private val wireMockServer: WireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
-    private lateinit var jwtStub: JwtStub
-
-    private val infotrygClientId = "my_cool_client_id"
-    private val vedtaksfeedAudience = "vedtaksfeed_client_id"
-    private val jwtIssuer = mockAuthentication()
 
     private val speedClient = mockk<SpeedClient> {
         every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
@@ -194,7 +199,7 @@ internal class EndToEndTest {
                 testApplicationModule = {
                     val azureConfig = AzureAdAppConfig(
                         clientId = vedtaksfeedAudience,
-                        configurationUrl = "${wireMockServer.baseUrl()}/config"
+                        configurationUrl = issuer.wellKnownUri().toString()
                     )
                     vedtaksfeed(VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(topicnavn, vedtaksfeedConsumer), azureConfig, speedClient)
                 },
@@ -212,24 +217,6 @@ internal class EndToEndTest {
         val testTopic: TestTopic,
         val ktorTest: TestContext
     )
-
-    private fun mockAuthentication(): String {
-        wireMockServer.start()
-        await("vent på WireMockServer har startet")
-            .atMost(5, TimeUnit.SECONDS)
-            .until {
-                try {
-                    Socket("localhost", wireMockServer.port()).use { it.isConnected }
-                } catch (_: Exception) {
-                    false
-                }
-            }
-        val jwtIssuer = "jwtIssuer"
-        jwtStub = JwtStub(jwtIssuer, wireMockServer)
-        WireMock.stubFor(jwtStub.stubbedJwkProvider())
-        WireMock.stubFor(jwtStub.stubbedConfigProvider())
-        return jwtIssuer
-    }
 
     private fun setupTestData(rapid: TestRapid) {
         repeat(100) {

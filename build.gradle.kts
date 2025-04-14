@@ -1,8 +1,7 @@
 val junitJupiterVersion = "5.12.1"
 val ktorVersion = "3.1.2"
 val rapidsAndRiversVersion = "2025033014191743337188.2f9d6b08d096"
-val tbdLibsVersion = "2025.03.30-14.11-a91ce546"
-val wireMockVersion = "3.9.2"
+val tbdLibsVersion = "2025.04.04-09.18-7cc3badf"
 val mockkVersion = "1.13.17"
 plugins {
     kotlin("jvm") version "2.1.20"
@@ -40,7 +39,7 @@ dependencies {
     testImplementation("com.github.navikt.tbd-libs:kafka-test:$tbdLibsVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.awaitility:awaitility:4.0.3")
-    testImplementation("org.wiremock:wiremock:$wireMockVersion")
+    testImplementation("com.github.navikt.tbd-libs:signed-jwt-issuer-test:$tbdLibsVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
