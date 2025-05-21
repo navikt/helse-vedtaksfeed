@@ -32,8 +32,8 @@ spec:
   kafka:
     pool: nav-dev
   azure:
-      application:
-          enabled: true
+    application:
+      enabled: true
   accessPolicy:
     inbound:
       rules:
@@ -51,7 +51,11 @@ spec:
   ingresses:
     - "https://vedtaksfeed.intern.dev.nav.no"
   env:
-  - name: KAFKA_CONSUMER_GROUP_ID
-    value: tbd-vedtaksfeed-v1
-  - name: KAFKA_RAPID_TOPIC
-    value: tbd.rapid.v1
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: tbd-vedtaksfeed-v1
+    - name: KAFKA_RAPID_TOPIC
+      value: tbd.rapid.v1
+  observability:
+    logging:
+      destinations:
+        - id: elastic
