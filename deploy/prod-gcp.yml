@@ -45,6 +45,8 @@ spec:
           cluster: prod-fss
     outbound:
       rules:
+        - application: logging
+          namespace: nais-system
         - application: speed-api
   secureLogs:
     enabled: true
