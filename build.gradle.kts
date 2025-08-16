@@ -4,7 +4,7 @@ val rapidsAndRiversVersion = "2025080710011754553680.051be9b54ef9"
 val tbdLibsVersion = "2025.08.07-09.55-15719a86"
 val mockkVersion = "1.13.17"
 plugins {
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.2.10"
 }
 
 repositories {
