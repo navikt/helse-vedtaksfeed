@@ -31,13 +31,9 @@ class UtbetalingUtbetaltRiver(
                 it.require("tidspunkt", JsonNode::asLocalDateTime)
                 it.requireKey(
                     "fødselsnummer",
-                    "organisasjonsnummer",
                     "utbetalingId",
-                    "fom",
-                    "tom",
                     "stønadsdager",
                     "korrelasjonsId",
-                    "maksdato",
                     "gjenståendeSykedager"
                 )
                 it.requireArray("arbeidsgiverOppdrag.linjer") {
@@ -48,7 +44,6 @@ class UtbetalingUtbetaltRiver(
                     require("fom", JsonNode::asLocalDate)
                     require("tom", JsonNode::asLocalDate)
                 }
-                it.interestedIn("statuskode")
             }
         }.register(this)
     }
