@@ -48,8 +48,6 @@ spec:
         - application: logging
           namespace: nais-system
         - application: speed-api
-  secureLogs:
-    enabled: true
   ingresses:
     - "https://vedtaksfeed.intern.dev.nav.no"
   env:
