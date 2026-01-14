@@ -1,5 +1,5 @@
 val junitJupiterVersion = "5.12.1"
-val ktorVersion = "3.2.3"
+val ktorVersion = "3.3.3"
 val rapidsAndRiversVersion = "2026011411051768385145.e8ebad1177b4"
 val tbdLibsVersion = "2025.11.04-10.12-3a167132"
 val mockkVersion = "1.13.17"
