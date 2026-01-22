@@ -5,7 +5,7 @@ import java.time.LocalDate
 import kotlin.test.assertEquals
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import org.intellij.lang.annotations.Language
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class FjerneGuleLinjerTest {
     private val interneVedtak = mutableListOf<Vedtak>()

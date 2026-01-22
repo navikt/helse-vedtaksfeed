@@ -1,7 +1,7 @@
 val junitJupiterVersion = "5.12.1"
 val ktorVersion = "3.2.3"
 val rapidsAndRiversVersion = "2026011411051768385145.e8ebad1177b4"
-val tbdLibsVersion = "2025.11.04-10.12-3a167132"
+val tbdLibsVersion = "2026.01.22-09.16-1d3f6039"
 val mockkVersion = "1.13.17"
 plugins {
     kotlin("jvm") version "2.2.21"
