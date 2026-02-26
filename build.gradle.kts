@@ -38,7 +38,7 @@ dependencies {
     testImplementation("com.github.navikt.tbd-libs:naisful-test-app:$tbdLibsVersion")
     testImplementation("com.github.navikt.tbd-libs:kafka-test:$tbdLibsVersion")
     testImplementation("io.mockk:mockk:$mockkVersion")
-    testImplementation("org.awaitility:awaitility:4.0.3")
+    testImplementation("org.awaitility:awaitility:4.3.0")
     testImplementation("com.github.navikt.tbd-libs:signed-jwt-issuer-test:$tbdLibsVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
