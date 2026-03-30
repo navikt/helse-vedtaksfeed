@@ -16,7 +16,7 @@ jobs:
     - uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '21.x'
+        java-version: '25.x'
         cache: 'gradle'
     - name: test and build
       run: ./gradlew test build

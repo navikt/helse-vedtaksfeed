@@ -4,7 +4,7 @@ val rapidsAndRiversVersion = "2026011411051768385145.e8ebad1177b4"
 val tbdLibsVersion = "2026.01.22-09.16-1d3f6039"
 val mockkVersion = "1.13.17"
 plugins {
-    kotlin("jvm") version "2.3.0"
+    kotlin("jvm") version "2.3.20"
 }
 
 // Sett opp repositories basert på om vi kjører i CI eller ikke
@@ -47,7 +47,7 @@ dependencies {
 
 kotlin {
     jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of("21"))
+        languageVersion.set(JavaLanguageVersion.of("25"))
     }
 }
 
