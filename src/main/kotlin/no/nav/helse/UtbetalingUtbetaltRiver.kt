@@ -10,6 +10,7 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
+import java.time.LocalDate
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -58,12 +59,42 @@ class UtbetalingUtbetaltRiver(
             val utbetalingId = packet["utbetalingId"].asText()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
 
+            val (type, fom: LocalDate, tom: LocalDate) = packet.førsteStønadsdagIkkeOpphørt.let { fomIkkeOpphørt ->
+                val fomUavhengigAvOpphør = packet.førsteStønadsdagUavhengigAvOpphør
+                val tomUavhengigAvOpphør = packet.sisteStønadsdagUavhengigAvOpphør
+
+                if (fomIkkeOpphørt == null) {
+                    tjenestekallLog.info(
+                        "Sender SykepengerAnnullert_v1 i stedet for SykepengerUtbetalt_v1 for {} med fom/tom {}/{}",
+                        packet.korrelasjonsId(),
+                        fomUavhengigAvOpphør,
+                        tomUavhengigAvOpphør
+                    )
+                    Triple(Vedtak.Vedtakstype.SykepengerAnnullert_v1, fomUavhengigAvOpphør, tomUavhengigAvOpphør)
+                } else {
+                    val tomIkkeOpphørt = packet.sisteStønadsdagIkkeOpphørt
+                    val endretFom = (fomIkkeOpphørt != fomUavhengigAvOpphør)
+                    val endretTom = (tomIkkeOpphørt != tomUavhengigAvOpphør)
+                    if (endretFom || endretTom) {
+                        tjenestekallLog.info(
+                            "Endret fom/tom for SykepengerUtbetalt_v1 for {} var {}/{} ble {}/{}",
+                            packet.korrelasjonsId(),
+                            fomUavhengigAvOpphør,
+                            tomUavhengigAvOpphør,
+                            fomIkkeOpphørt,
+                            tomIkkeOpphørt
+                        )
+                    }
+                    Triple(Vedtak.Vedtakstype.SykepengerUtbetalt_v1, fomIkkeOpphørt, tomIkkeOpphørt)
+                }
+            }
+
             Vedtak(
-                type = Vedtak.Vedtakstype.SykepengerUtbetalt_v1,
+                type = type,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
                 fødselsnummer = packet["fødselsnummer"].asText(),
-                førsteStønadsdag = packet.førsteStønadsdag,
-                sisteStønadsdag = packet.sisteStønadsdag,
+                førsteStønadsdag = fom,
+                sisteStønadsdag = tom,
                 førsteFraværsdag = base32EncodedKorrelasjonsId, // dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå.
                 forbrukteStønadsdager = packet.forbrukteStønadsdager()
             )
@@ -86,15 +117,25 @@ class UtbetalingUtbetaltRiver(
         }
     }
 
-    private val JsonMessage.førsteStønadsdag get() = listOfNotNull(
+    private val JsonMessage.førsteStønadsdagIkkeOpphørt get() = listOfNotNull(
         this["arbeidsgiverOppdrag.linjer"].firstOrNull { !it.erOpphørt() }?.path("fom")?.asLocalDate(),
         this["personOppdrag.linjer"].firstOrNull { !it.erOpphørt() }?.path("fom")?.asLocalDate()
-    ).min()
+    ).minOrNull()
 
-    private val JsonMessage.sisteStønadsdag get() = listOfNotNull(
+    private val JsonMessage.sisteStønadsdagIkkeOpphørt get() = listOfNotNull(
         this["arbeidsgiverOppdrag.linjer"].lastOrNull { !it.erOpphørt() }?.path("tom")?.asLocalDate(),
         this["personOppdrag.linjer"].lastOrNull { !it.erOpphørt() }?.path("tom")?.asLocalDate()
     ).max()
+
+    private val JsonMessage.førsteStønadsdagUavhengigAvOpphør get() = listOfNotNull(
+        this["arbeidsgiverOppdrag.linjer"].map { it.path("fom").asLocalDate() },
+        this["personOppdrag.linjer"].map { it.path("fom").asLocalDate() }
+    ).flatten().min()
+
+    private val JsonMessage.sisteStønadsdagUavhengigAvOpphør get() = listOfNotNull(
+        this["arbeidsgiverOppdrag.linjer"].map { it.path("tom").asLocalDate() },
+        this["personOppdrag.linjer"].map { it.path("tom").asLocalDate() }
+    ).flatten().max()
 
     private fun JsonNode.erOpphørt():Boolean {
         if (!this.has("statuskode")) return false

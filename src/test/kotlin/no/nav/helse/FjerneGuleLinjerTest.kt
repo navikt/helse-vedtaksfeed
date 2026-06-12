@@ -34,13 +34,8 @@ class FjerneGuleLinjerTest {
         assertEquals(2, interneVedtak.size)
         with(interneVedtak[1]) {
             assertEquals(SykepengerUtbetalt_v1, type)
-            // Sånn er det nå!
-            assertEquals(LocalDate.parse("2018-01-17"), førsteStønadsdag)
-            assertEquals(LocalDate.parse("2018-01-31"), sisteStønadsdag)
-
-            // Sånn burde det vært?
-            //assertEquals(LocalDate.parse("2018-01-21"), førsteStønadsdag)
-            //assertEquals(LocalDate.parse("2018-01-25"), sisteStønadsdag)
+            assertEquals(LocalDate.parse("2018-01-21"), førsteStønadsdag)
+            assertEquals(LocalDate.parse("2018-01-25"), sisteStønadsdag)
         }
     }
 
@@ -61,10 +56,7 @@ class FjerneGuleLinjerTest {
             assertEquals(LocalDate.parse("2018-01-17"), førsteStønadsdag)
             assertEquals(LocalDate.parse("2018-01-31"), sisteStønadsdag)
 
-            // Sånn er det nå!
-            assertEquals(SykepengerUtbetalt_v1, type)
-            // Sånn burde det vært?
-            //assertEquals(SykepengerAnnullert_v1, type)
+            assertEquals(Vedtak.Vedtakstype.SykepengerAnnullert_v1, type)
         }
     }
 
