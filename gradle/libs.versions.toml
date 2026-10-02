@@ -7,7 +7,7 @@ ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt" }
 
 awaitility = "org.awaitility:awaitility:4.0.3"
 commons-codec = "commons-codec:commons-codec:1.15"
-mockk = "io.mockk:mockk:1.13.17"
+mockk = "io.mockk:mockk:1.14.11"
 wiremock = "org.wiremock:wiremock-jetty12:3.13.2"
 
 rapidsAndRivers = "com.github.navikt:rapids-and-rivers:2026011411051768385145.e8ebad1177b4"
