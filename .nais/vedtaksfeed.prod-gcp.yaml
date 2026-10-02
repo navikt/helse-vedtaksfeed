@@ -1,0 +1,21 @@
+spec:
+  liveness:
+    initialDelay: 10
+  readiness:
+    initialDelay: 10
+  kafka:
+    pool: nav-prod
+  accessPolicy:
+    inbound:
+      rules:
+        - application: infotrygd-feed-proxy
+          namespace: teamfamilie
+          cluster: prod-fss
+        - application: infotrygd-feed-proxy-v2
+          namespace: infotrygd
+          cluster: prod-fss
+  ingresses:
+    - "https://vedtaksfeed.intern.nav.no"
+  env:
+    - name: KAFKA_RESET_POLICY
+      value: none

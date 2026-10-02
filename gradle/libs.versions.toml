@@ -1,0 +1,25 @@
+[versions]
+tbdLibs = "2026.01.22-09.16-1d3f6039"
+sykepengerGradlePlugins = "20261001.1830"
+
+[libraries]
+ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt" }
+
+awaitility = "org.awaitility:awaitility:4.0.3"
+commons-codec = "commons-codec:commons-codec:1.15"
+mockk = "io.mockk:mockk:1.13.17"
+wiremock = "org.wiremock:wiremock-jetty12:3.13.2"
+
+rapidsAndRivers = "com.github.navikt:rapids-and-rivers:2026011411051768385145.e8ebad1177b4"
+
+tbdLibs-azureTokenClientDefault = { module = "com.github.navikt.tbd-libs:azure-token-client-default", version.ref = "tbdLibs" }
+tbdLibs-kafkaTest = { module = "com.github.navikt.tbd-libs:kafka-test", version.ref = "tbdLibs" }
+tbdLibs-naisfulApp = { module = "com.github.navikt.tbd-libs:naisful-app", version.ref = "tbdLibs" }
+tbdLibs-naisfulTestApp = { module = "com.github.navikt.tbd-libs:naisful-test-app", version.ref = "tbdLibs" }
+tbdLibs-rapidsAndRiversTest = { module = "com.github.navikt.tbd-libs:rapids-and-rivers-test", version.ref = "tbdLibs" }
+tbdLibs-retry = { module = "com.github.navikt.tbd-libs:retry", version.ref = "tbdLibs" }
+tbdLibs-signedJwtIssuerTest = { module = "com.github.navikt.tbd-libs:signed-jwt-issuer-test", version.ref = "tbdLibs" }
+tbdLibs-speedClient = { module = "com.github.navikt.tbd-libs:speed-client", version.ref = "tbdLibs" }
+
+[plugins]
+sykepenger-deployable = { id = "no.nav.sykepenger.deployable", version.ref = "sykepengerGradlePlugins" }

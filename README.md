@@ -1,6 +1,6 @@
 # helse-vedtaksfeed
 
-![Bygg og deploy](https://github.com/navikt/helse-vedtaksfeed/workflows/Bygg%20og%20deploy/badge.svg)
+![Bygg og deploy](https://github.com/navikt/helse-vedtaksfeed/actions/workflows/main.yml/badge.svg)
 
 ## Beskrivelse
 

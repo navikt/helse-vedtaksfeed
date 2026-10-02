@@ -1,0 +1,18 @@
+spec:
+  liveness:
+    initialDelay: 20
+  readiness:
+    initialDelay: 20
+  kafka:
+    pool: nav-dev
+  accessPolicy:
+    inbound:
+      rules:
+        - application: infotrygd-feed-proxy
+          namespace: teamfamilie
+          cluster: dev-fss
+        - application: infotrygd-feed-proxy-v2
+          namespace: infotrygd
+          cluster: dev-fss
+  ingresses:
+    - "https://vedtaksfeed.intern.dev.nav.no"
