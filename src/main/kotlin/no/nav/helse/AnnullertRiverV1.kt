@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDate
@@ -10,6 +9,7 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
+import tools.jackson.databind.JsonNode
 import java.util.*
 
 class AnnullertRiverV1(
@@ -41,14 +41,14 @@ class AnnullertRiverV1(
 
     override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
         try {
-            val utbetalingId = packet["utbetalingId"].asText()
+            val utbetalingId = packet["utbetalingId"].asString()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
             val fom = packet["fom"].asLocalDate()
             val tom = packet["tom"].asLocalDate()
             val offset = Vedtak(
                 type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
                 opprettet = packet["@opprettet"].asLocalDateTime(),
-                fødselsnummer = packet["fødselsnummer"].asText(),
+                fødselsnummer = packet["fødselsnummer"].asString(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,
                 førsteFraværsdag = base32EncodedKorrelasjonsId,
@@ -65,6 +65,6 @@ class AnnullertRiverV1(
     }
 }
 
-private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
+private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").stringValue()).let { korrelasjonsId ->
     korrelasjonsId to korrelasjonsId.base32Encode()
 }

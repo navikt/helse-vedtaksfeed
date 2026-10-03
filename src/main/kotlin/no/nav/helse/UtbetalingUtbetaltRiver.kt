@@ -1,6 +1,5 @@
 package no.nav.helse
 
-import com.fasterxml.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDate
@@ -12,6 +11,7 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
 import java.time.LocalDate
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
 import java.util.*
 
 internal val tjenestekallLog = LoggerFactory.getLogger("tjenestekall")
@@ -56,7 +56,7 @@ class UtbetalingUtbetaltRiver(
 
     override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
         try {
-            val utbetalingId = packet["utbetalingId"].asText()
+            val utbetalingId = packet["utbetalingId"].asString()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
 
             val (type, fom: LocalDate, tom: LocalDate) = packet.førsteStønadsdagIkkeOpphørt.let { fomIkkeOpphørt ->
@@ -92,7 +92,7 @@ class UtbetalingUtbetaltRiver(
             Vedtak(
                 type = type,
                 opprettet = packet["tidspunkt"].asLocalDateTime(),
-                fødselsnummer = packet["fødselsnummer"].asText(),
+                fødselsnummer = packet["fødselsnummer"].asString(),
                 førsteStønadsdag = fom,
                 sisteStønadsdag = tom,
                 førsteFraværsdag = base32EncodedKorrelasjonsId, // dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå.
@@ -128,23 +128,23 @@ class UtbetalingUtbetaltRiver(
     ).max()
 
     private val JsonMessage.førsteStønadsdagUavhengigAvOpphør get() = listOfNotNull(
-        this["arbeidsgiverOppdrag.linjer"].map { it.path("fom").asLocalDate() },
-        this["personOppdrag.linjer"].map { it.path("fom").asLocalDate() }
+        this["arbeidsgiverOppdrag.linjer"].values().map { it.path("fom").asLocalDate() },
+        this["personOppdrag.linjer"].values().map { it.path("fom").asLocalDate() }
     ).flatten().min()
 
     private val JsonMessage.sisteStønadsdagUavhengigAvOpphør get() = listOfNotNull(
-        this["arbeidsgiverOppdrag.linjer"].map { it.path("tom").asLocalDate() },
-        this["personOppdrag.linjer"].map { it.path("tom").asLocalDate() }
+        this["arbeidsgiverOppdrag.linjer"].values().map { it.path("tom").asLocalDate() },
+        this["personOppdrag.linjer"].values().map { it.path("tom").asLocalDate() }
     ).flatten().max()
 
     private fun JsonNode.erOpphørt():Boolean {
         if (!this.has("statuskode")) return false
-        if (!this["statuskode"].isTextual) return false
-        return this["statuskode"].asText() == "OPPH"
+        if (!this["statuskode"].isString) return false
+        return this["statuskode"].asString() == "OPPH"
     }
 }
 
-private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").textValue()).let { korrelasjonsId ->
+private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").stringValue()).let { korrelasjonsId ->
     korrelasjonsId to korrelasjonsId.base32Encode()
 }
 

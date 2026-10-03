@@ -2,12 +2,6 @@ package no.nav.helse
 
 import com.auth0.jwk.JwkProvider
 import com.auth0.jwk.JwkProviderBuilder
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.navikt.tbd_libs.azure.createAzureTokenClientFromEnvironment
 import com.github.navikt.tbd_libs.kafka.AivenConfig
 import com.github.navikt.tbd_libs.naisful.naisApp
@@ -30,17 +24,31 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.DeserializationFeature
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.MapperFeature
+import tools.jackson.databind.cfg.DateTimeFeature
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.jacksonMapperBuilder
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.http.HttpClient
 import java.util.*
 
-val objectMapper: ObjectMapper = jacksonObjectMapper()
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
-    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-    .registerModule(JavaTimeModule())
+// Jackson 3 sorterer properties alfabetisk som standard; vi beholder deklarasjonsrekkefølgen så formatet ut ikke endres
+val objectMapper: JsonMapper = jacksonMapperBuilder()
+    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+    .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+    .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+    .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+    .build()
+
+private val apiObjectMapper: JsonMapper = jacksonMapperBuilder()
+    .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+    .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+    .build()
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
 fun main() {
@@ -66,7 +74,7 @@ fun main() {
             withKtor { preStopHook, rapid ->
                 naisApp(
                     meterRegistry = meterRegistry,
-                    objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule()).disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS),
+                    objectMapper = apiObjectMapper,
                     applicationLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.App"),
                     callLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.CallLogging"),
                     naisEndpoints = com.github.navikt.tbd_libs.naisful.NaisEndpoints.Default,
@@ -130,8 +138,8 @@ internal class AzureAdAppConfig(private val clientId: String, configurationUrl: 
 
     init {
         configurationUrl.getJson().also {
-            this.issuer = it["issuer"].textValue()
-            this.jwksUri = it["jwks_uri"].textValue()
+            this.issuer = it["issuer"].stringValue()
+            this.jwksUri = it["jwks_uri"].stringValue()
         }
 
         jwkProvider = JwkProviderBuilder(URI(this.jwksUri).toURL()).build()
