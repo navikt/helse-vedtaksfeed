@@ -1,22 +1,26 @@
 package no.nav.helse
 
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
-import java.time.LocalDate
-import kotlin.test.assertEquals
 import no.nav.helse.Vedtak.Vedtakstype.SykepengerUtbetalt_v1
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
+import kotlin.test.assertEquals
 
 class FjerneGuleLinjerTest {
     private val interneVedtak = mutableListOf<Vedtak>()
     private val rapid: TestRapid
 
     init {
-        val publisher: (String, Vedtak) -> Long = { _, vedtak -> interneVedtak.add(vedtak); 42 }
-        rapid = TestRapid().apply {
-            UtbetalingUtbetaltRiver(this, publisher)
-            AnnullertRiverV1(this, publisher)
+        val publisher: (String, Vedtak) -> Long = { _, vedtak ->
+            interneVedtak.add(vedtak)
+            42
         }
+        rapid =
+            TestRapid().apply {
+                UtbetalingUtbetaltRiver(this, publisher)
+                AnnullertRiverV1(this, publisher)
+            }
     }
 
     @Test
@@ -146,4 +150,3 @@ class FjerneGuleLinjerTest {
   }
 """
 }
-

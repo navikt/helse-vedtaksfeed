@@ -14,46 +14,56 @@ import java.util.*
 
 class AnnullertRiverV1(
     rapidsConnection: RapidsConnection,
-    private val vedtaksfeedPublisher: Publisher
+    private val vedtaksfeedPublisher: Publisher,
 ) : River.PacketListener {
-
     init {
-        River(rapidsConnection).apply {
-            precondition { it.requireValue("@event_name", "utbetaling_annullert") }
-            validate {
-                it.require("@opprettet", JsonNode::asLocalDateTime)
-                it.requireKey(
-                    "fødselsnummer",
-                    "organisasjonsnummer",
-                    "utbetalingId",
-                    "korrelasjonsId",
-                    "fom",
-                    "tom"
-                )
-            }
-        }.register(this)
+        River(rapidsConnection)
+            .apply {
+                precondition { it.requireValue("@event_name", "utbetaling_annullert") }
+                validate {
+                    it.require("@opprettet", JsonNode::asLocalDateTime)
+                    it.requireKey(
+                        "fødselsnummer",
+                        "organisasjonsnummer",
+                        "utbetalingId",
+                        "korrelasjonsId",
+                        "fom",
+                        "tom",
+                    )
+                }
+            }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: MessageContext, messageMetadata: MessageMetadata) {
+    override fun onError(
+        problems: MessageProblems,
+        context: MessageContext,
+        messageMetadata: MessageMetadata,
+    ) {
         tjenestekallLog.error("Forstod ikke innkommende melding (utbetaling_annullert): ${problems.toExtendedReport()}")
         log.error("Forstod ikke innkommende melding (utbetaling_annullert): $problems")
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+    override fun onPacket(
+        packet: JsonMessage,
+        context: MessageContext,
+        metadata: MessageMetadata,
+        meterRegistry: MeterRegistry,
+    ) {
         try {
             val utbetalingId = packet["utbetalingId"].asString()
             val (korrelasjonsId, base32EncodedKorrelasjonsId) = packet.korrelasjonsId()
             val fom = packet["fom"].asLocalDate()
             val tom = packet["tom"].asLocalDate()
-            val offset = Vedtak(
-                type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
-                opprettet = packet["@opprettet"].asLocalDateTime(),
-                fødselsnummer = packet["fødselsnummer"].asString(),
-                førsteStønadsdag = fom,
-                sisteStønadsdag = tom,
-                førsteFraværsdag = base32EncodedKorrelasjonsId,
-                forbrukteStønadsdager = 0
-            ).republish(vedtaksfeedPublisher)
+            val offset =
+                Vedtak(
+                    type = Vedtak.Vedtakstype.SykepengerAnnullert_v1,
+                    opprettet = packet["@opprettet"].asLocalDateTime(),
+                    fødselsnummer = packet["fødselsnummer"].asString(),
+                    førsteStønadsdag = fom,
+                    sisteStønadsdag = tom,
+                    førsteFraværsdag = base32EncodedKorrelasjonsId,
+                    forbrukteStønadsdager = 0,
+                ).republish(vedtaksfeedPublisher)
             "Republiserer annullering for utbetalingId=$utbetalingId og korrelasjonsId=$korrelasjonsId ($base32EncodedKorrelasjonsId) på intern topic med offset $offset".also {
                 log.info(it)
                 tjenestekallLog.info(it)
@@ -65,6 +75,7 @@ class AnnullertRiverV1(
     }
 }
 
-private fun JsonMessage.korrelasjonsId() = UUID.fromString(get("korrelasjonsId").stringValue()).let { korrelasjonsId ->
-    korrelasjonsId to korrelasjonsId.base32Encode()
-}
+private fun JsonMessage.korrelasjonsId() =
+    UUID.fromString(get("korrelasjonsId").stringValue()).let { korrelasjonsId ->
+        korrelasjonsId to korrelasjonsId.base32Encode()
+    }

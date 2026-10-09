@@ -6,13 +6,13 @@ import java.time.LocalDateTime
 class Feed(
     val tittel: String,
     val inneholderFlereElementer: Boolean,
-    val elementer: List<Element>
+    val elementer: List<Element>,
 ) {
     class Element(
         val type: String,
         val sekvensId: Long,
         val innhold: Innhold,
-        val metadata: Metadata
+        val metadata: Metadata,
     ) {
         class Innhold(
             val aktoerId: String,
@@ -20,11 +20,11 @@ class Feed(
             val foersteStoenadsdag: LocalDate,
             val sisteStoenadsdag: LocalDate,
             val utbetalingsreferanse: String,
-            val forbrukteStoenadsdager: Int
+            val forbrukteStoenadsdager: Int,
         )
 
         class Metadata(
-            val opprettetDato: LocalDate
+            val opprettetDato: LocalDate,
         )
     }
 }
@@ -37,9 +37,10 @@ class Vedtak(
     val sisteStønadsdag: LocalDate,
     /** dette har blitt nøkkelen som beskriver VL-linja i Infotrygd. Kan ikke endre på kontrakten nå. */
     val førsteFraværsdag: String,
-    val forbrukteStønadsdager: Int
+    val forbrukteStønadsdager: Int,
 ) {
     enum class Vedtakstype {
-        SykepengerUtbetalt_v1, SykepengerAnnullert_v1
+        SykepengerUtbetalt_v1,
+        SykepengerAnnullert_v1,
     }
 }

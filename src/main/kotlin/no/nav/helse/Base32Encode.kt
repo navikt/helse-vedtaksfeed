@@ -7,13 +7,15 @@ import java.util.*
 private const val pad = '='
 private const val padByte = pad.code.toByte()
 
-internal fun UUID.base32Encode(): String {
-    return Base32(padByte)
+internal fun UUID.base32Encode(): String =
+    Base32(padByte)
         .encodeAsString(this.byteArray())
         .replace(pad.toString(), "")
-}
 
-private fun UUID.byteArray() = ByteBuffer.allocate(Long.SIZE_BYTES * 2).apply {
-    putLong(this@byteArray.mostSignificantBits)
-    putLong(this@byteArray.leastSignificantBits)
-}.array()
+private fun UUID.byteArray() =
+    ByteBuffer
+        .allocate(Long.SIZE_BYTES * 2)
+        .apply {
+            putLong(this@byteArray.mostSignificantBits)
+            putLong(this@byteArray.leastSignificantBits)
+        }.array()

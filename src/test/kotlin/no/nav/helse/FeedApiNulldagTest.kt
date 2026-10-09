@@ -27,21 +27,28 @@ internal class FeedApiNulldagTest {
     @Test
     fun `får tilbake elementer fra feed`() {
         kafkaTest(kafkaContainer) {
-            val vedtaksfeedConsumer = KafkaConsumer(Properties().apply {
-                putAll(kafkaContainer.connectionProperties)
-                this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
-                this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
-                this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
-            }, StringDeserializer(), VedtakDeserializer())
+            val vedtaksfeedConsumer =
+                KafkaConsumer(
+                    Properties().apply {
+                        putAll(kafkaContainer.connectionProperties)
+                        this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+                        this[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = false
+                        this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+                    },
+                    StringDeserializer(),
+                    VedtakDeserializer(),
+                )
 
-            val speedClient = mockk<SpeedClient> {
-                every { hentFødselsnummerOgAktørId(any(), any()) } returns IdentResponse(
-                    fødselsnummer = "fnr",
-                    aktørId = "aktørId",
-                    npid = null,
-                    kilde = IdentResponse.KildeResponse.PDL
-                ).ok()
-            }
+            val speedClient =
+                mockk<SpeedClient> {
+                    every { hentFødselsnummerOgAktørId(any(), any()) } returns
+                        IdentResponse(
+                            fødselsnummer = "fnr",
+                            aktørId = "aktørId",
+                            npid = null,
+                            kilde = IdentResponse.KildeResponse.PDL,
+                        ).ok()
+                }
 
             naisfulTestApp(
                 testApplicationModule = {
@@ -64,7 +71,8 @@ internal class FeedApiNulldagTest {
                 send("0", vedtak(fom2, tom2))
                 feedRequest(sistLesteSekvensId = 0, maxAntall = 10).also { feed ->
                     assertTrue(
-                        feed.elementer.isNotEmpty(), "Feed skal ha elementer når det er mer enn ett element på topic"
+                        feed.elementer.isNotEmpty(),
+                        "Feed skal ha elementer når det er mer enn ett element på topic",
                     )
                     assertEquals(2, feed.elementer.size)
                     assertEquals(fom1.toString(), feed.elementer[0].innhold.utbetalingsreferanse)
@@ -74,12 +82,16 @@ internal class FeedApiNulldagTest {
         }
     }
 
-    private suspend fun TestContext.feedRequest(sistLesteSekvensId: Int, maxAntall: Int): Feed {
-        return client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall").body<Feed>()
-    }
+    private suspend fun TestContext.feedRequest(
+        sistLesteSekvensId: Int,
+        maxAntall: Int,
+    ): Feed = client.get("/feed?sistLesteSekvensId=$sistLesteSekvensId&maxAntall=$maxAntall").body<Feed>()
 }
 
-private fun vedtak(fom: LocalDate, tom: LocalDate) = """
+private fun vedtak(
+    fom: LocalDate,
+    tom: LocalDate,
+) = """
     {
       "type": "SykepengerUtbetalt_v1",
       "opprettet": "2018-01-01T12:00:00",

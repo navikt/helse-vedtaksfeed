@@ -38,17 +38,19 @@ import java.net.http.HttpClient
 import java.util.*
 
 // Jackson 3 sorterer properties alfabetisk som standard; vi beholder deklarasjonsrekkefølgen så formatet ut ikke endres
-val objectMapper: JsonMapper = jacksonMapperBuilder()
-    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-    .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
-    .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
-    .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-    .build()
+val objectMapper: JsonMapper =
+    jacksonMapperBuilder()
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+        .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+        .build()
 
-private val apiObjectMapper: JsonMapper = jacksonMapperBuilder()
-    .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
-    .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-    .build()
+private val apiObjectMapper: JsonMapper =
+    jacksonMapperBuilder()
+        .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+        .build()
 val log: Logger = LoggerFactory.getLogger("vedtaksfeed")
 
 fun main() {
@@ -58,51 +60,54 @@ fun main() {
     val config = AivenConfig.default
 
     val vedtaksfeedProducer = KafkaProducer(config.producerConfig(Properties()), StringSerializer(), VedtakSerializer())
-    val vedtaksfeedConsumer = VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(
-        topic = vedtaksfeedtopic,
-        consumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer())
-    )
+    val vedtaksfeedConsumer =
+        VedtaksfeedConsumer.KafkaVedtaksfeedConsumer(
+            topic = vedtaksfeedtopic,
+            consumer = KafkaConsumer(config.consumerConfig("vedtaksfeed", Properties()), StringDeserializer(), VedtakDeserializer()),
+        )
 
     val azureClient = createAzureTokenClientFromEnvironment(env)
     val speedClient = SpeedClient(HttpClient.newHttpClient(), objectMapper, azureClient)
     val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT, PrometheusRegistry.defaultRegistry, Clock.SYSTEM)
 
-    RapidApplication.create(
-        env = env,
-        meterRegistry = meterRegistry,
-        builder = {
-            withKtor { preStopHook, rapid ->
-                naisApp(
-                    meterRegistry = meterRegistry,
-                    objectMapper = apiObjectMapper,
-                    applicationLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.App"),
-                    callLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.CallLogging"),
-                    naisEndpoints = com.github.navikt.tbd_libs.naisful.NaisEndpoints.Default,
-                    timersConfig = { call, _ ->
-                        this
-                            .tag("azp_name", call.principal<JWTPrincipal>()?.get("azp_name") ?: "n/a")
-                            // https://github.com/linkerd/polixy/blob/main/DESIGN.md#l5d-client-id-client-id
-                            // eksempel: <APP>.<NAMESPACE>.serviceaccount.identity.linkerd.cluster.local
-                            .tag("konsument", call.request.header("L5d-Client-Id") ?: "n/a")
-                    },
-                    mdcEntries = mapOf(
-                        "azp_name" to { call: ApplicationCall -> call.principal<JWTPrincipal>()?.get("azp_name") },
-                        "konsument" to { call: ApplicationCall -> call.request.header("L5d-Client-Id") }
-                    ),
-                    aliveCheck = rapid::isReady,
-                    readyCheck = rapid::isReady,
-                    preStopHook = preStopHook::handlePreStopRequest
-                ) {
-                    val azureConfig = AzureAdAppConfig(
-                        clientId = env.getValue("AZURE_APP_CLIENT_ID"),
-                        configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL")
-                    )
-                    vedtaksfeed(vedtaksfeedConsumer, azureConfig, speedClient)
+    RapidApplication
+        .create(
+            env = env,
+            meterRegistry = meterRegistry,
+            builder = {
+                withKtor { preStopHook, rapid ->
+                    naisApp(
+                        meterRegistry = meterRegistry,
+                        objectMapper = apiObjectMapper,
+                        applicationLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.App"),
+                        callLogger = LoggerFactory.getLogger("no.nav.helse.vedtaksfeed.CallLogging"),
+                        naisEndpoints = com.github.navikt.tbd_libs.naisful.NaisEndpoints.Default,
+                        timersConfig = { call, _ ->
+                            this
+                                .tag("azp_name", call.principal<JWTPrincipal>()?.get("azp_name") ?: "n/a")
+                                // https://github.com/linkerd/polixy/blob/main/DESIGN.md#l5d-client-id-client-id
+                                // eksempel: <APP>.<NAMESPACE>.serviceaccount.identity.linkerd.cluster.local
+                                .tag("konsument", call.request.header("L5d-Client-Id") ?: "n/a")
+                        },
+                        mdcEntries =
+                            mapOf(
+                                "azp_name" to { call: ApplicationCall -> call.principal<JWTPrincipal>()?.get("azp_name") },
+                                "konsument" to { call: ApplicationCall -> call.request.header("L5d-Client-Id") },
+                            ),
+                        aliveCheck = rapid::isReady,
+                        readyCheck = rapid::isReady,
+                        preStopHook = preStopHook::handlePreStopRequest,
+                    ) {
+                        val azureConfig =
+                            AzureAdAppConfig(
+                                clientId = env.getValue("AZURE_APP_CLIENT_ID"),
+                                configurationUrl = env.getValue("AZURE_APP_WELL_KNOWN_URL"),
+                            )
+                        vedtaksfeed(vedtaksfeedConsumer, azureConfig, speedClient)
+                    }
                 }
-            }
-        }
-    )
-        .setupRivers { fødselsnummer, vedtak ->
+            },
+        ).setupRivers { fødselsnummer, vedtak ->
             log.info("publiserer vedtak på feed-topic")
             vedtaksfeedProducer.send(ProducerRecord(vedtaksfeedtopic, fødselsnummer, vedtak)).get().offset()
         }
@@ -117,7 +122,7 @@ internal fun RapidsConnection.setupRivers(publisher: Publisher) {
 internal fun Application.vedtaksfeed(
     consumer: VedtaksfeedConsumer,
     azureConfig: AzureAdAppConfig,
-    speedClient: SpeedClient
+    speedClient: SpeedClient,
 ) {
     install(Authentication) {
         jwt {
@@ -131,7 +136,10 @@ internal fun Application.vedtaksfeed(
     }
 }
 
-internal class AzureAdAppConfig(private val clientId: String, configurationUrl: String) {
+internal class AzureAdAppConfig(
+    private val clientId: String,
+    configurationUrl: String,
+) {
     private val issuer: String
     private val jwkProvider: JwkProvider
     private val jwksUri: String
@@ -154,13 +162,14 @@ internal class AzureAdAppConfig(private val clientId: String, configurationUrl: 
 
     private fun String.getJson(): JsonNode {
         val (responseCode, responseBody) = this.fetchUrl()
-        if (responseCode >= 300 || responseBody == null) throw RuntimeException("got status $responseCode from ${this}.")
+        if (responseCode >= 300 || responseBody == null) throw RuntimeException("got status $responseCode from $this.")
         return jacksonObjectMapper().readTree(responseBody)
     }
 
-    private fun String.fetchUrl() = with(URI(this).toURL().openConnection() as HttpURLConnection) {
-        requestMethod = "GET"
-        val stream: InputStream? = if (responseCode < 300) this.inputStream else this.errorStream
-        responseCode to stream?.bufferedReader()?.readText()
-    }
+    private fun String.fetchUrl() =
+        with(URI(this).toURL().openConnection() as HttpURLConnection) {
+            requestMethod = "GET"
+            val stream: InputStream? = if (responseCode < 300) this.inputStream else this.errorStream
+            responseCode to stream?.bufferedReader()?.readText()
+        }
 }

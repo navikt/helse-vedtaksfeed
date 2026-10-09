@@ -9,16 +9,19 @@ import java.time.LocalDateTime
 import java.util.*
 
 class MaksdatoTest {
-
     private val interneVedtak = mutableListOf<Vedtak>()
     private val rapid: TestRapid
 
     init {
-        val publisher: (String, Vedtak) -> Long = { _, vedtak -> interneVedtak.add(vedtak); 42 }
-         rapid = TestRapid().apply {
-            UtbetalingUtbetaltRiver(this, publisher)
-            AnnullertRiverV1(this, publisher)
+        val publisher: (String, Vedtak) -> Long = { _, vedtak ->
+            interneVedtak.add(vedtak)
+            42
         }
+        rapid =
+            TestRapid().apply {
+                UtbetalingUtbetaltRiver(this, publisher)
+                AnnullertRiverV1(this, publisher)
+            }
     }
 
     @Test
@@ -38,7 +41,6 @@ class MaksdatoTest {
         rapid.sendTestMessage(utbetalingMedOpphørFørst)
         assertEquals(LocalDate.parse("2023-10-12"), interneVedtak[0].førsteStønadsdag)
     }
-
 }
 
 @Language("JSON")
@@ -72,7 +74,6 @@ private val utbetalingUtbetalt = """
   }
 """
 
-
 @Language("JSON")
 private val utbetalingUtbetaltUtenGjenståendeDager = """
     {
@@ -104,9 +105,9 @@ private val utbetalingUtbetaltUtenGjenståendeDager = """
   }
 """
 
-
 @Language("JSON")
-val utbetalingMedOpphørFørst = """
+val utbetalingMedOpphørFørst =
+    """
     {
       "@event_name": "utbetaling_utbetalt",
       "organisasjonsnummer": "111111111",
@@ -147,4 +148,4 @@ val utbetalingMedOpphørFørst = """
       "@opprettet": "2020-01-01T01:01:01.000000000",
       "fødselsnummer": "11111100000"
     }
-""".trimIndent()
+    """.trimIndent()
