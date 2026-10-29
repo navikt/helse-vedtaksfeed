@@ -1,6 +1,6 @@
 [versions]
-tbdLibs = "20261013.1613"
-sykepengerGradlePlugins = "20261028.1441"
+tbdLibs = "20261029.1843"
+sykepengerGradlePlugins = "20261029.1945"
 
 [libraries]
 ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt" }
