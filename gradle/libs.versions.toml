@@ -1,5 +1,5 @@
 [versions]
-tbdLibs = "20261123.1112"
+tbdLibs = "20261125.1015"
 sykepengerGradlePlugins = "20261029.1945"
 
 [libraries]
@@ -10,7 +10,7 @@ commons-codec = "commons-codec:commons-codec:1.23.0"
 mockk = "io.mockk:mockk:1.14.12"
 wiremock = "org.wiremock:wiremock-jetty12:3.13.2"
 
-rapidsAndRivers = "com.github.navikt:rapids-and-rivers:2026110308421793691732"
+rapidsAndRivers = "com.github.navikt:rapids-and-rivers:2026111908531795074794"
 
 tbdLibs-azureTokenClientDefault = { module = "com.github.navikt.tbd-libs:azure-token-client-default", version.ref = "tbdLibs" }
 tbdLibs-kafkaTest = { module = "com.github.navikt.tbd-libs:kafka-test", version.ref = "tbdLibs" }
